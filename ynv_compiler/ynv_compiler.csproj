@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!--
+      The repository carries a compatible CodeWalker fork beside this project.
+      Override this property for another checkout, for example:
+      dotnet build /p:CodeWalkerCoreProject=C:\src\CodeWalker\CodeWalker.Core\CodeWalker.Core.csproj
+    -->
+    <CodeWalkerCoreProject Condition="'$(CodeWalkerCoreProject)' == ''">$(MSBuildThisFileDirectory)..\CodeWalker_Navmesh_Edit-main\CodeWalker.Core\CodeWalker.Core.csproj</CodeWalkerCoreProject>
+  </PropertyGroup>
+
+  <Target Name="RequireCodeWalkerCore" BeforeTargets="ResolveProjectReferences" Condition="!Exists('$(CodeWalkerCoreProject)')">
+    <Error Text="CodeWalker.Core project was not found at '$(CodeWalkerCoreProject)'. Restore the bundled CodeWalker_Navmesh_Edit-main folder or build with /p:CodeWalkerCoreProject=&lt;path-to-CodeWalker.Core.csproj&gt;." />
+  </Target>
+
+  <ItemGroup>
+    <ProjectReference Include="$(CodeWalkerCoreProject)" Condition="Exists('$(CodeWalkerCoreProject)')" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,8 @@
+# Keep source and documentation portable; never line-end-convert binary assets.
+* text=auto eol=lf
+
+*.pdf binary
+*.zip binary
+*.ynv binary
+*.dll binary
+*.exe binary

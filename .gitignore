@@ -1,0 +1,33 @@
+# Local IDEs and virtual environments
+.idea/
+.venv/
+.vs/
+
+# Python and Blender caches/backups
+__pycache__/
+*.py[cod]
+*.blend1
+*.blend2
+
+# .NET build output
+ynv_compiler/bin/
+ynv_compiler/obj/
+*.user
+
+# Local reference applications and upstream source trees
+CodeWalker30_dev46/
+CodeWalker_Navmesh_Edit-main/
+Sollumz_Navmesh_Edit-main/
+Sollumz(3).zip
+
+# Local source fixtures, backups, signing material and scratch data
+Backup/
+exporttest/
+tmp/
+navmesh*.ynv.xml
+*.ynv
+*.cer
+
+# Generated distribution assets are attached to releases, not committed
+dist/
+ynv_blender_addon.zip
