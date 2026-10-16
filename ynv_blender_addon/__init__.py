@@ -3,7 +3,7 @@
 bl_info = {
     "name": "GTANAVMESH Edit",
     "author": "devsanja",
-    "version": (0, 11, 0),
+    "version": (0, 11, 1),
     "blender": (2, 80, 0),
     "location": "File > Import/Export; View3D > Sidebar > GTANAVMESH Edit",
     "description": "GTANAVMESH Edit imports, edits and exports GTA V YNV navmesh XML with CodeWalker validation.",
@@ -23,6 +23,8 @@ from bpy_extras.io_utils import ExportHelper, ImportHelper
 from .ynv_format import (
     NavMesh,
     NavMeshValidationError,
+    MAX_BYTE,
+    MAX_POLYGON_FLAGS5,
     Point,
     Polygon,
     Portal,
@@ -45,6 +47,22 @@ SOLLUMZ_NAVMESH_PORTAL = "sollumz_navmesh_portal"
 SOLLUMZ_NAVMESH_POINT = "sollumz_navmesh_point"
 DEFAULT_CONTENT_FLAGS = "Polygons, Portals"
 DEFAULT_EDGE_FLAGS = "0:0, 0:0"
+CONTENT_FLAG_OPTIONS = (
+    ("content_polygons", "Polygons"),
+    ("content_portals", "Portals"),
+    ("content_vehicle", "Vehicle"),
+    ("content_unknown_8", "Unknown8"),
+    ("content_unknown_16", "Unknown16"),
+)
+POLYGON_FLAG_VALUE_OPTIONS = (
+    ("polygon_flags_1", "Flags1", 0, MAX_BYTE),
+    ("polygon_flags_2", "Flags2", 1, MAX_BYTE),
+    ("polygon_flags_3", "Flags3", 2, MAX_BYTE),
+    ("polygon_flags_4", "Flags4", 3, MAX_BYTE),
+    ("polygon_unk_x", "UnkX", 4, MAX_BYTE),
+    ("polygon_unk_y", "UnkY", 5, MAX_BYTE),
+    ("polygon_flags_5", "Flags5 (B16)", 6, MAX_POLYGON_FLAGS5),
+)
 # Polygon metadata used to live only in four arrays indexed by Blender's
 # transient polygon index.  That corrupts an export as soon as faces are
 # reordered.  Keep the legacy arrays for backwards-compatible .blend files,
@@ -61,6 +79,9 @@ NO_SOURCE_POLYGON = -1
 _PENDING_POLYGON_EDITOR_LOADS = set()
 _PENDING_SETTINGS_SYNCS = set()
 _SYNCING_FLAG_CHECKBOXES = False
+_SYNCING_FLAG_VALUES = False
+_SYNCING_EDGE_FLAG_VALUES = False
+_SYNCING_CONTENT_FLAGS = False
 _SOLLUMZ_IMPORT_PATCHED = False
 _SOLLUMZ_OPERATOR_PATCHED = False
 POLYGON_FLAG_BITS = (
@@ -75,7 +96,7 @@ POLYGON_FLAG_BITS = (
     ("flag_b08_underground_unk0", "B08 UndergroundUnk0", 8),
     ("flag_b09_underground_unk1", "B09 UndergroundUnk1", 9),
     ("flag_b10_underground_unk2", "B10 UndergroundUnk2", 10),
-    ("flag_b11_underground", "B11 Underground", 11),
+    ("flag_b11_underground", "B11 UndergroundUnk3", 11),
     ("flag_b12_unused", "B12 Unused", 12),
     ("flag_b13_path_node", "B13 PathNode", 13),
     ("flag_b14_interior", "B14 Interior", 14),
@@ -175,6 +196,121 @@ def _custom_property_value(obj, key):
     except (AttributeError, TypeError):
         pass
     return None
+
+
+def _navmesh_metadata_owners(mesh_obj):
+    """Return the mesh and its navmesh root once each, in edit precedence order."""
+    owners = []
+    for owner in (mesh_obj, _navmesh_root_for_props(mesh_obj)):
+        if owner is not None and all(owner is not existing for existing in owners):
+            owners.append(owner)
+    return owners
+
+
+def _explicit_navmesh_area_id(mesh_obj):
+    """Read an add-on AreaID without treating zero as "missing".
+
+    A source XML is a safe seed for a new import, but it must not overwrite a
+    deliberate tile 0 or another value subsequently stored on the mesh/root.
+    """
+    for owner in _navmesh_metadata_owners(mesh_obj):
+        value = _custom_property_value(owner, "ynv_area_id")
+        if value is None:
+            continue
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _explicit_navmesh_content_flags(mesh_obj):
+    """Read add-on ContentFlags, preserving an explicit empty string."""
+    for owner in _navmesh_metadata_owners(mesh_obj):
+        value = _custom_property_value(owner, "ynv_content_flags")
+        if value is not None:
+            return str(value).strip()
+    return None
+
+
+def _scene_settings_for_navmesh(mesh_obj, source_navmesh=None):
+    """Return settings only when they belong to this mesh's source context.
+
+    Settings are scene-wide.  A stale panel from another selected navmesh must
+    never replace this mesh's source metadata just because its default AreaID
+    happens to be zero.  For an unsourced mesh, the panel is the active input.
+    """
+    try:
+        settings = getattr(bpy.context.scene, "cw_navmesh_settings", None)
+    except (AttributeError, RuntimeError, TypeError):
+        return None
+    if settings is None or source_navmesh is None:
+        return settings
+
+    setting_path = str(getattr(settings, "source_xml_path", "") or "").strip()
+    source_paths = [
+        str(_custom_property_value(owner, "ynv_source_xml") or "").strip()
+        for owner in _navmesh_metadata_owners(mesh_obj)
+    ]
+    source_paths = [path for path in source_paths if path]
+    if not setting_path or not source_paths:
+        return None
+
+    try:
+        setting_path = str(Path(setting_path).resolve())
+        source_paths = [str(Path(path).resolve()) for path in source_paths]
+    except OSError:
+        pass
+    return settings if setting_path in source_paths else None
+
+
+def _navmesh_area_id(mesh_obj, source_navmesh=None, *, include_scene=True):
+    """Choose export AreaID without letting a source overwrite user metadata."""
+    area_id = _explicit_navmesh_area_id(mesh_obj)
+    if area_id is not None:
+        return area_id
+
+    # Sollumz has no presence marker for its default 0 value, so retain the
+    # established fallback behaviour for that property group.  The add-on's
+    # own explicit custom property above is authoritative even when it is 0.
+    sollumz_area_id = _get_sollumz_navmesh_area_id(mesh_obj, 0)
+    if sollumz_area_id:
+        return int(sollumz_area_id)
+
+    if include_scene:
+        settings = _scene_settings_for_navmesh(mesh_obj, source_navmesh)
+        if settings is not None:
+            try:
+                return int(settings.area_id)
+            except (AttributeError, TypeError, ValueError):
+                pass
+
+    if source_navmesh is not None:
+        return int(source_navmesh.area_id)
+    return 0
+
+
+def _navmesh_content_flags(mesh_obj, source_navmesh=None, *, include_scene=True):
+    """Choose export ContentFlags, including an intentional all-off value."""
+    content_flags = _explicit_navmesh_content_flags(mesh_obj)
+    if content_flags is not None:
+        return content_flags
+
+    sollumz_content_flags = _get_sollumz_navmesh_content_flags(mesh_obj, "")
+    if sollumz_content_flags:
+        return sollumz_content_flags
+
+    if include_scene:
+        settings = _scene_settings_for_navmesh(mesh_obj, source_navmesh)
+        if settings is not None:
+            try:
+                return str(settings.content_flags or "").strip()
+            except (AttributeError, TypeError, ValueError):
+                pass
+
+    if source_navmesh is not None:
+        return str(source_navmesh.content_flags or "").strip()
+    return DEFAULT_CONTENT_FLAGS
 
 
 def _object_uses_legacy_ynv_properties(obj):
@@ -392,23 +528,15 @@ def _sync_settings_from_mesh(context, mesh_obj):
         except Exception:
             source_navmesh = None
 
-    area_id = _get_int_prop(mesh_obj, "ynv_area_id", 0)
-    if not area_id and mesh_obj.parent:
-        area_id = _get_int_prop(mesh_obj.parent, "ynv_area_id", 0)
-    if not area_id:
-        area_id = _get_sollumz_navmesh_area_id(mesh_obj, 0)
-    if not area_id and source_navmesh:
-        area_id = source_navmesh.area_id
+    # This is a read/sync operation, not an edit.  Do not let a stale
+    # scene-wide settings panel bleed into the selected object's metadata.
+    # In particular, zero and an empty flag string can be intentional edits.
+    area_id = _navmesh_area_id(mesh_obj, source_navmesh, include_scene=False)
+    content_flags = _navmesh_content_flags(mesh_obj, source_navmesh, include_scene=False)
 
     settings.area_id = area_id
-    content_flags = str(mesh_obj.get("ynv_content_flags", "")).strip()
-    if not content_flags and mesh_obj.parent:
-        content_flags = str(mesh_obj.parent.get("ynv_content_flags", "")).strip()
-    if not content_flags:
-        content_flags = _get_sollumz_navmesh_content_flags(mesh_obj, "")
-    if not content_flags and source_navmesh:
-        content_flags = source_navmesh.content_flags
-    settings.content_flags = content_flags or DEFAULT_CONTENT_FLAGS
+    settings.content_flags = content_flags
+    _sync_content_flag_checkboxes_from_text(settings, settings.content_flags)
     settings.source_xml_path = source_path
     mesh_obj["ynv_area_id"] = area_id
     mesh_obj["ynv_content_flags"] = settings.content_flags
@@ -420,7 +548,10 @@ def _sync_settings_from_mesh(context, mesh_obj):
 def _apply_settings_to_mesh(context, mesh_obj):
     settings = _scene_settings(context)
     area_id = int(settings.area_id)
-    content_flags = settings.content_flags.strip() or DEFAULT_CONTENT_FLAGS
+    # An empty value represents a deliberate all-off ContentFlags selection.
+    # It must round-trip rather than being silently restored to the default.
+    content_flags = settings.content_flags.strip()
+    _sync_content_flag_checkboxes_from_text(settings, content_flags)
     mesh_obj["ynv_area_id"] = area_id
     mesh_obj["ynv_content_flags"] = content_flags
     if settings.source_xml_path.strip():
@@ -1901,6 +2032,7 @@ def _cw_navmesh_auto_source_handler(scene, depsgraph):
                 settings = scene.cw_navmesh_settings
                 settings.area_id = _get_int_prop(obj, "ynv_area_id", 0)
                 settings.content_flags = str(obj.get("ynv_content_flags", DEFAULT_CONTENT_FLAGS))
+                _sync_content_flag_checkboxes_from_text(settings, settings.content_flags)
                 settings.source_xml_path = str(obj.get("ynv_source_xml", ""))
             elif hasattr(scene, "cw_navmesh_settings"):
                 settings = scene.cw_navmesh_settings
@@ -1910,6 +2042,7 @@ def _cw_navmesh_auto_source_handler(scene, depsgraph):
                 content_flags = str(obj.get("ynv_content_flags", "")) or _get_sollumz_navmesh_content_flags(obj, "")
                 if content_flags and not str(settings.content_flags).strip():
                     settings.content_flags = content_flags
+                    _sync_content_flag_checkboxes_from_text(settings, settings.content_flags)
 
 
 def _is_navmesh_mesh(obj):
@@ -2035,7 +2168,205 @@ def _normalize_flags_text(value):
     parts = [int(part) for part in re.split(r"[\s,]+", value.strip()) if part]
     if len(parts) not in (6, 7):
         raise ValueError("Polygon Flags must contain 6 or 7 integers.")
+    for index, part in enumerate(parts):
+        maximum = MAX_POLYGON_FLAGS5 if index == 6 else MAX_BYTE
+        if not 0 <= part <= maximum:
+            if index == 6:
+                raise ValueError("Polygon flag 6 (Flags5) must be 0 or 1.")
+            raise ValueError(f"Polygon flag {index} must be a byte (0..{MAX_BYTE}).")
     return parts
+
+
+def _content_flag_tokens(value):
+    """Return content-flag names while accepting CodeWalker's comma-separated XML form."""
+    return [token.strip() for token in str(value or "").split(",") if token.strip()]
+
+
+def _set_content_flag(text, name, enabled):
+    """Set one known ContentFlags name without losing unrecognised future values."""
+    known_names = {option_name.lower() for _attr_name, option_name in CONTENT_FLAG_OPTIONS}
+    active_names = {token.lower() for token in _content_flag_tokens(text)}
+    if enabled:
+        active_names.add(name.lower())
+    else:
+        active_names.discard(name.lower())
+    known_values = [
+        option_name
+        for _attr_name, option_name in CONTENT_FLAG_OPTIONS
+        if option_name.lower() in active_names
+    ]
+    unknown_values = [
+        token for token in _content_flag_tokens(text) if token.lower() not in known_names
+    ]
+    return ", ".join(known_values + unknown_values)
+
+
+def _sync_content_flag_checkboxes_from_text(settings, text):
+    global _SYNCING_CONTENT_FLAGS
+    active_names = {token.lower() for token in _content_flag_tokens(text)}
+    _SYNCING_CONTENT_FLAGS = True
+    try:
+        for attr_name, option_name in CONTENT_FLAG_OPTIONS:
+            setattr(settings, attr_name, option_name.lower() in active_names)
+    finally:
+        _SYNCING_CONTENT_FLAGS = False
+
+
+def _make_content_flag_checkbox_update(option_name):
+    def update(self, context):
+        if _SYNCING_CONTENT_FLAGS:
+            return
+        attr_name = next(attr for attr, name in CONTENT_FLAG_OPTIONS if name == option_name)
+        self.content_flags = _set_content_flag(
+            self.content_flags,
+            option_name,
+            bool(getattr(self, attr_name)),
+        )
+        try:
+            mesh_obj = _selected_navmesh_object(context)
+            _apply_settings_to_mesh(context, mesh_obj)
+        except Exception:
+            # The toggles are also useful as defaults before a navmesh is selected.
+            pass
+
+    return update
+
+
+def _sync_polygon_flag_values_from_flags(settings, flags):
+    global _SYNCING_FLAG_VALUES
+    values = [int(value) for value in flags[:7]]
+    while len(values) < 7:
+        values.append(0)
+    _SYNCING_FLAG_VALUES = True
+    try:
+        for attr_name, _label, index, maximum in POLYGON_FLAG_VALUE_OPTIONS:
+            setattr(settings, attr_name, min(max(values[index], 0), maximum))
+    finally:
+        _SYNCING_FLAG_VALUES = False
+
+
+def _make_polygon_flag_value_update(value_index):
+    def update(self, context):
+        if _SYNCING_FLAG_VALUES:
+            return
+        try:
+            flags = _normalize_flags_text(self.polygon_flags)
+        except ValueError:
+            flags = [0, 0, 0, 0, 0, 0]
+        while len(flags) <= value_index:
+            flags.append(0)
+        attr_name = POLYGON_FLAG_VALUE_OPTIONS[value_index][0]
+        flags[value_index] = int(getattr(self, attr_name))
+        _set_polygon_flag_text(self, flags)
+        _sync_flag_checkboxes_from_flags(self, flags)
+        _apply_current_flags_to_active_polygon(context, self)
+
+    return update
+
+
+def _parse_edge_flags_row(value):
+    """Parse CodeWalker's ``Poly1Unk2:Poly1Unk3, Poly2Unk2:Poly2Unk3`` row."""
+    match = re.fullmatch(r"\s*(\d+)\s*:\s*(\d+)\s*,\s*(\d+)\s*:\s*(\d+)\s*", str(value or ""))
+    if match is None:
+        return None
+    values = tuple(int(group) for group in match.groups())
+    if values[0] > 0x3 or values[2] > 0x3 or values[1] > 0x7FF or values[3] > 0x7FF:
+        return None
+    return values
+
+
+def _format_edge_flags_row(settings):
+    return (
+        f"{int(settings.edge_poly1_unk2)}:{int(settings.edge_poly1_unk3)}, "
+        f"{int(settings.edge_poly2_unk2)}:{int(settings.edge_poly2_unk3)}"
+    )
+
+
+def _sync_edge_flag_editor_from_rows(settings):
+    global _SYNCING_EDGE_FLAG_VALUES
+    rows = _split_rows(settings.polygon_edges_flags)
+    edge_index = min(max(int(settings.edge_flag_index), 0), max(0, len(rows) - 1))
+    values = _parse_edge_flags_row(rows[edge_index]) if rows else None
+    if values is None:
+        values = (0, 0, 0, 0)
+    _SYNCING_EDGE_FLAG_VALUES = True
+    try:
+        settings.edge_flag_index = edge_index
+        settings.edge_poly1_unk2 = values[0]
+        settings.edge_poly1_unk3 = values[1]
+        settings.edge_poly2_unk2 = values[2]
+        settings.edge_poly2_unk3 = values[3]
+    finally:
+        _SYNCING_EDGE_FLAG_VALUES = False
+
+
+def _apply_current_edge_flags_to_active_polygon(context, settings):
+    if not context:
+        return
+    try:
+        mesh_obj = _selected_navmesh_object(context)
+    except Exception:
+        return
+    if not mesh_obj or mesh_obj.type != "MESH":
+        return
+
+    rows = _split_rows(settings.polygon_edges_flags)
+    index = int(settings.polygon_index)
+    if index < 0 or index >= len(mesh_obj.data.polygons):
+        index = _active_polygon_index(mesh_obj)
+    if index < 0 or index >= len(mesh_obj.data.polygons):
+        return
+    if len(rows) != len(mesh_obj.data.polygons[index].vertices):
+        return
+    if any(_parse_edge_flags_row(row) is None for row in rows):
+        return
+
+    was_edit_mode = mesh_obj.mode == "EDIT"
+    if was_edit_mode:
+        try:
+            bpy.ops.object.mode_set(mode="OBJECT")
+        except Exception:
+            return
+    try:
+        polygon_flags, polygon_edges, polygon_edges_flags, polygon_portals = _ensure_polygon_metadata(mesh_obj)
+        polygon_edges_flags[index] = rows
+        _write_polygon_metadata(
+            mesh_obj,
+            polygon_flags,
+            polygon_edges,
+            polygon_edges_flags,
+            polygon_portals,
+        )
+        mesh_obj.data.update()
+    finally:
+        if was_edit_mode:
+            try:
+                bpy.ops.object.mode_set(mode="EDIT")
+            except Exception:
+                pass
+
+
+def _make_edge_flag_index_update():
+    def update(self, _context):
+        if not _SYNCING_EDGE_FLAG_VALUES:
+            _sync_edge_flag_editor_from_rows(self)
+
+    return update
+
+
+def _make_edge_flag_value_update():
+    def update(self, context):
+        if _SYNCING_EDGE_FLAG_VALUES:
+            return
+        rows = _split_rows(self.polygon_edges_flags)
+        edge_index = int(self.edge_flag_index)
+        if edge_index < 0 or edge_index >= len(rows):
+            return
+        rows[edge_index] = _format_edge_flags_row(self)
+        self.polygon_edges_flags = "\n".join(rows)
+        _apply_current_edge_flags_to_active_polygon(context, self)
+
+    return update
 
 
 def _flag_bit_location(bit):
@@ -2155,7 +2486,9 @@ def _make_flag_checkbox_update(bit, attr_name):
             flags = _normalize_flags_text(self.polygon_flags)
         except ValueError:
             flags = [0, 0, 0, 0, 0, 0]
-        _set_polygon_flag_text(self, _set_flag_enabled(flags, bit, bool(getattr(self, attr_name))))
+        flags = _set_flag_enabled(flags, bit, bool(getattr(self, attr_name)))
+        _set_polygon_flag_text(self, flags)
+        _sync_polygon_flag_values_from_flags(self, flags)
         _apply_current_flags_to_active_polygon(context, self)
 
     return update
@@ -2177,10 +2510,12 @@ def _load_polygon_editor_from_mesh(context, mesh_obj, polygon_index=None, ensure
     if polygon_index < len(polygon_flags):
         _set_polygon_flag_text(settings, polygon_flags[polygon_index])
         _sync_flag_checkboxes_from_flags(settings, polygon_flags[polygon_index])
+        _sync_polygon_flag_values_from_flags(settings, polygon_flags[polygon_index])
     if polygon_index < len(polygon_edges):
         settings.polygon_edges = "\n".join(polygon_edges[polygon_index])
     if polygon_index < len(polygon_edges_flags):
         settings.polygon_edges_flags = "\n".join(polygon_edges_flags[polygon_index])
+        _sync_edge_flag_editor_from_rows(settings)
     if polygon_index < len(polygon_portals):
         settings.polygon_portals = " ".join(str(value) for value in polygon_portals[polygon_index])
 
@@ -2338,17 +2673,6 @@ def _build_local_edge_links(mesh_obj, area_id, existing_edges=None):
     linked_edges = sum(1 for rows in polygon_edges for edge in rows if edge != DEFAULT_EDGE)
     total_edges = sum(len(rows) for rows in polygon_edges)
     return linked_edges, total_edges, changed_edges
-
-
-def _navmesh_area_id(mesh_obj, source_navmesh=None):
-    area_id = _get_int_prop(mesh_obj, "ynv_area_id", 0)
-    if not area_id and mesh_obj.parent:
-        area_id = _get_int_prop(mesh_obj.parent, "ynv_area_id", 0)
-    if not area_id:
-        area_id = _get_sollumz_navmesh_area_id(mesh_obj, 0)
-    if source_navmesh and source_navmesh.area_id:
-        area_id = source_navmesh.area_id
-    return int(area_id)
 
 
 def _edge_vertex_key(vec, precision=EDGE_MATCH_PRECISION):
@@ -2892,27 +3216,10 @@ def _build_navmesh_for_export(mesh_obj, filepath):
     polygon_flags, polygon_edges, polygon_edges_flags, polygon_portals = _read_polygon_metadata(mesh_obj)
     face_ids, source_indices = _current_face_identity(mesh_obj)
 
-    area_id = _get_int_prop(mesh_obj, "ynv_area_id", 0)
-    if not area_id and mesh_obj.parent:
-        area_id = _get_int_prop(mesh_obj.parent, "ynv_area_id", 0)
-    if not area_id:
-        area_id = _get_sollumz_navmesh_area_id(mesh_obj, 0)
-    if source_navmesh and source_navmesh.area_id:
-        area_id = source_navmesh.area_id
-    if not area_id and hasattr(bpy.context.scene, "cw_navmesh_settings"):
-        area_id = int(bpy.context.scene.cw_navmesh_settings.area_id)
-
-    content_flags = str(mesh_obj.get("ynv_content_flags", "")).strip()
-    if not content_flags and mesh_obj.parent:
-        content_flags = str(mesh_obj.parent.get("ynv_content_flags", "")).strip()
-    if not content_flags:
-        content_flags = _get_sollumz_navmesh_content_flags(mesh_obj, "")
-    if source_navmesh and source_navmesh.content_flags:
-        content_flags = source_navmesh.content_flags
-    if not content_flags and hasattr(bpy.context.scene, "cw_navmesh_settings"):
-        content_flags = bpy.context.scene.cw_navmesh_settings.content_flags.strip()
-    if not content_flags:
-        content_flags = DEFAULT_CONTENT_FLAGS
+    # Explicit object/root metadata and matching scene settings are user input.
+    # Source XML only fills an absent value; it must not undo an edit.
+    area_id = _navmesh_area_id(mesh_obj, source_navmesh)
+    content_flags = _navmesh_content_flags(mesh_obj, source_navmesh)
 
     auto_build_edges = True
     if hasattr(bpy.context.scene, "cw_navmesh_settings"):
@@ -3098,6 +3405,36 @@ class CWNavmeshSettings(bpy.types.PropertyGroup):
         description="CodeWalker ContentFlags value written into the YNV XML.",
         default=DEFAULT_CONTENT_FLAGS,
     )
+    content_polygons: bpy.props.BoolProperty(
+        name="Polygons",
+        description="Include polygon data in this YNV ContentFlags field.",
+        default=True,
+        update=_make_content_flag_checkbox_update("Polygons"),
+    )
+    content_portals: bpy.props.BoolProperty(
+        name="Portals",
+        description="Include portal data in this YNV ContentFlags field.",
+        default=True,
+        update=_make_content_flag_checkbox_update("Portals"),
+    )
+    content_vehicle: bpy.props.BoolProperty(
+        name="Vehicle",
+        description="Mark this as a vehicle navmesh in the YNV ContentFlags field.",
+        default=False,
+        update=_make_content_flag_checkbox_update("Vehicle"),
+    )
+    content_unknown_8: bpy.props.BoolProperty(
+        name="Unknown8",
+        description="CodeWalker ContentFlags bit 8; preserve/use only when required by the source navmesh.",
+        default=False,
+        update=_make_content_flag_checkbox_update("Unknown8"),
+    )
+    content_unknown_16: bpy.props.BoolProperty(
+        name="Unknown16",
+        description="CodeWalker ContentFlags bit 16; preserve/use only when required by the source navmesh.",
+        default=False,
+        update=_make_content_flag_checkbox_update("Unknown16"),
+    )
     source_xml_path: bpy.props.StringProperty(
         name="Source XML",
         description="Original CodeWalker .ynv.xml used to preserve source metadata. Select this explicitly whenever possible.",
@@ -3142,8 +3479,64 @@ class CWNavmeshSettings(bpy.types.PropertyGroup):
     )
     polygon_flags: bpy.props.StringProperty(
         name="Flags",
-        description="Six CodeWalker polygon flag integers.",
+        description="Raw CodeWalker polygon flag bytes: Flags1, Flags2, Flags3, Flags4, UnkX, UnkY, optional Flags5.",
         default="0 0 0 0 0 0",
+    )
+    polygon_flags_1: bpy.props.IntProperty(
+        name="Flags1",
+        description="Raw CodeWalker Flags1 byte for the active polygon.",
+        default=0,
+        min=0,
+        max=0xFF,
+        update=_make_polygon_flag_value_update(0),
+    )
+    polygon_flags_2: bpy.props.IntProperty(
+        name="Flags2",
+        description="Raw CodeWalker Flags2 byte for the active polygon.",
+        default=0,
+        min=0,
+        max=0xFF,
+        update=_make_polygon_flag_value_update(1),
+    )
+    polygon_flags_3: bpy.props.IntProperty(
+        name="Flags3",
+        description="Raw CodeWalker Flags3 byte for the active polygon.",
+        default=0,
+        min=0,
+        max=0xFF,
+        update=_make_polygon_flag_value_update(2),
+    )
+    polygon_flags_4: bpy.props.IntProperty(
+        name="Flags4",
+        description="Raw CodeWalker Flags4 byte for the active polygon.",
+        default=0,
+        min=0,
+        max=0xFF,
+        update=_make_polygon_flag_value_update(3),
+    )
+    polygon_unk_x: bpy.props.IntProperty(
+        name="UnkX",
+        description="Raw CodeWalker UnkX byte for the active polygon.",
+        default=0,
+        min=0,
+        max=0xFF,
+        update=_make_polygon_flag_value_update(4),
+    )
+    polygon_unk_y: bpy.props.IntProperty(
+        name="UnkY",
+        description="Raw CodeWalker UnkY byte for the active polygon.",
+        default=0,
+        min=0,
+        max=0xFF,
+        update=_make_polygon_flag_value_update(5),
+    )
+    polygon_flags_5: bpy.props.IntProperty(
+        name="Flags5 (B16)",
+        description="CodeWalker Flags5 field; only bit B16 (0 or 1) is encoded.",
+        default=0,
+        min=0,
+        max=1,
+        update=_make_polygon_flag_value_update(6),
     )
     polygon_edges: bpy.props.StringProperty(
         name="Edges",
@@ -3156,6 +3549,45 @@ class CWNavmeshSettings(bpy.types.PropertyGroup):
         description="One edge flag row per polygon vertex, separated by new lines.",
         default="",
         subtype="NONE",
+    )
+    edge_flag_index: bpy.props.IntProperty(
+        name="Edge",
+        description="Zero-based edge row to edit for the active polygon.",
+        default=0,
+        min=0,
+        update=_make_edge_flag_index_update(),
+    )
+    edge_poly1_unk2: bpy.props.IntProperty(
+        name="Poly1 Unk2",
+        description="First edge part's 2-bit CodeWalker Unk2 value.",
+        default=0,
+        min=0,
+        max=0x3,
+        update=_make_edge_flag_value_update(),
+    )
+    edge_poly1_unk3: bpy.props.IntProperty(
+        name="Poly1 Unk3",
+        description="First edge part's 11-bit CodeWalker Unk3 value.",
+        default=0,
+        min=0,
+        max=0x7FF,
+        update=_make_edge_flag_value_update(),
+    )
+    edge_poly2_unk2: bpy.props.IntProperty(
+        name="Poly2 Unk2",
+        description="Second edge part's 2-bit CodeWalker Unk2 value.",
+        default=0,
+        min=0,
+        max=0x3,
+        update=_make_edge_flag_value_update(),
+    )
+    edge_poly2_unk3: bpy.props.IntProperty(
+        name="Poly2 Unk3",
+        description="Second edge part's 11-bit CodeWalker Unk3 value.",
+        default=0,
+        min=0,
+        max=0x7FF,
+        update=_make_edge_flag_value_update(),
     )
     polygon_portals: bpy.props.StringProperty(
         name="Portals",
@@ -3319,10 +3751,44 @@ class CWNAVMESH_OT_apply_polygon(bpy.types.Operator):
         try:
             mesh_obj = _selected_navmesh_object(context)
             _apply_polygon_editor_to_mesh(context, mesh_obj)
+            settings = _scene_settings(context)
+            flags = _normalize_flags_text(settings.polygon_flags)
+            _sync_polygon_flag_values_from_flags(settings, flags)
+            _sync_edge_flag_editor_from_rows(settings)
         except Exception as exc:
             self.report({"ERROR"}, str(exc))
             return {"CANCELLED"}
         self.report({"INFO"}, "Applied polygon metadata")
+        return {"FINISHED"}
+
+
+class CWNAVMESH_OT_apply_flags_to_selected(bpy.types.Operator):
+    bl_idname = "cw_navmesh.apply_flags_to_selected"
+    bl_label = "Apply Flags to Selected"
+    bl_description = "Applies the shown raw flag bytes and known-bit toggles to all selected faces"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        try:
+            mesh_obj = _selected_navmesh_object(context)
+            settings = _scene_settings(context)
+            flags = _normalize_flags_text(settings.polygon_flags)
+            selected_indices = _selected_polygon_indices(mesh_obj)
+            if not selected_indices:
+                selected_indices = [_active_polygon_index(mesh_obj)]
+            was_edit_mode = mesh_obj.mode == "EDIT"
+            if was_edit_mode:
+                bpy.ops.object.mode_set(mode="OBJECT")
+            try:
+                _set_polygon_flags(mesh_obj, selected_indices, flags)
+            finally:
+                if was_edit_mode:
+                    bpy.ops.object.mode_set(mode="EDIT")
+            _load_polygon_editor_from_mesh(context, mesh_obj, selected_indices[0], ensure_metadata=False)
+        except Exception as exc:
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
+        self.report({"INFO"}, f"Applied flags to {len(selected_indices)} face(s)")
         return {"FINISHED"}
 
 
@@ -3857,7 +4323,16 @@ class CWNAVMESH_PT_panel(bpy.types.Panel):
             pass
 
         layout.prop(settings, "area_id")
-        layout.prop(settings, "content_flags")
+        content_box = layout.box()
+        content_box.label(text="Content Flags")
+        row = content_box.row(align=True)
+        row.prop(settings, "content_polygons")
+        row.prop(settings, "content_portals")
+        row = content_box.row(align=True)
+        row.prop(settings, "content_vehicle")
+        row.prop(settings, "content_unknown_8")
+        content_box.prop(settings, "content_unknown_16")
+        content_box.prop(settings, "content_flags", text="Raw names")
         layout.prop(settings, "source_xml_path")
         layout.prop(settings, "source_search_directory")
         layout.prop(settings, "auto_find_source_xml")
@@ -3920,23 +4395,42 @@ class CWNAVMESH_PT_panel(bpy.types.Panel):
             row.operator(CWNAVMESH_OT_pick_polygon.bl_idname, text="Load Active")
             row.operator(CWNAVMESH_OT_apply_polygon.bl_idname, text="Apply")
             row = poly.row(align=True)
+            row.operator(CWNAVMESH_OT_apply_flags_to_selected.bl_idname, text="Apply Flags to Selected")
+            row = poly.row(align=True)
             row.operator(CWNAVMESH_OT_copy_flags.bl_idname, text="Copy Flags")
             row.operator(CWNAVMESH_OT_paste_flags.bl_idname, text="Paste Flags")
             poly.prop(settings, "copied_polygon_flags")
-            poly.prop(settings, "polygon_flags")
+            poly.prop(settings, "polygon_flags", text="Raw flag bytes")
             try:
                 current_flags = _normalize_flags_text(settings.polygon_flags)
             except ValueError:
                 current_flags = [0, 0, 0, 0, 0, 0]
+            raw_values_box = poly.box()
+            raw_values_box.label(text="CodeWalker Flag Bytes")
+            for first_index in range(0, len(POLYGON_FLAG_VALUE_OPTIONS), 2):
+                row = raw_values_box.row(align=True)
+                for attr_name, _label, _byte_index, _maximum in POLYGON_FLAG_VALUE_OPTIONS[first_index:first_index + 2]:
+                    row.prop(settings, attr_name)
+            raw_values_box.label(text="UnkX/UnkY are raw bytes; Flags5 stores B16 only.")
             flags_box = poly.box()
-            flags_box.label(text="Flag Bits")
+            flags_box.label(text="Known GTA V Flag Bits (active face)")
             for index in range(0, len(POLYGON_FLAG_BITS), 2):
                 row = flags_box.row(align=True)
                 for attr_name, _label, _bit in POLYGON_FLAG_BITS[index:index + 2]:
                     row.prop(settings, attr_name)
             flags_box.label(text=f"Bitfield: {_polygon_flag_bits(current_flags)}")
-            poly.prop(settings, "polygon_edges")
-            poly.prop(settings, "polygon_edges_flags")
+            poly.prop(settings, "polygon_edges", text="Edges (advanced)")
+            edge_flags_box = poly.box()
+            edge_flags_box.label(text="EdgeFlags (active polygon)")
+            edge_flags_box.prop(settings, "edge_flag_index")
+            row = edge_flags_box.row(align=True)
+            row.prop(settings, "edge_poly1_unk2")
+            row.prop(settings, "edge_poly1_unk3")
+            row = edge_flags_box.row(align=True)
+            row.prop(settings, "edge_poly2_unk2")
+            row.prop(settings, "edge_poly2_unk3")
+            edge_flags_box.label(text="Values write immediately to this edge row.")
+            poly.prop(settings, "polygon_edges_flags", text="All EdgeFlags (advanced)")
             poly.prop(settings, "polygon_portals")
         elif active:
             layout.label(text=f"Active: {active.name}")
@@ -3988,6 +4482,7 @@ classes = (
     CWNAVMESH_OT_fix_sources,
     CWNAVMESH_OT_pick_polygon,
     CWNAVMESH_OT_apply_polygon,
+    CWNAVMESH_OT_apply_flags_to_selected,
     CWNAVMESH_OT_copy_flags,
     CWNAVMESH_OT_paste_flags,
     CWNAVMESH_OT_build_edges,

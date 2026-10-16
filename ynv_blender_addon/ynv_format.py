@@ -29,6 +29,11 @@ MAX_PORTAL_INDEX = 0xFFFF  # PortalLinks entries are ushorts.
 MAX_PORTALS = MAX_PORTAL_INDEX + 1
 MAX_PORTAL_LINKS_PER_POLYGON = 0x7  # NavMeshPoly.PortalLinkCount is 3 bits.
 MAX_BYTE = 0xFF
+# CodeWalker's seventh XML Flags value (``Flags5``) occupies only bit 8 of
+# ``NavMeshPoly.PolyFlags1``.  It is written as a byte for historical XML
+# compatibility, but every bit except bit 0 would otherwise be discarded by
+# the native compiler.
+MAX_POLYGON_FLAGS5 = 0x1
 MAX_EDGE_UNK2 = 0x3  # NavMeshEdgePart.Unk2 is 2 bits.
 MAX_EDGE_UNK3 = 0x7FF  # NavMeshEdgePart.Unk3 is 11 bits.
 ANGLE_LIMIT = math.tau
@@ -276,8 +281,12 @@ def validate_navmesh_for_codewalker(navmesh: NavMesh, *, strict: bool = False) -
         if len(polygon.flags) not in (6, 7):
             error(f"Polygon {index} must have 6 or 7 flags")
         for flag_index, flag in enumerate(polygon.flags):
-            if not _is_int_in_range(flag, 0, MAX_BYTE):
-                error(f"Polygon {index} flag {flag_index} must be a byte (0..{MAX_BYTE})")
+            maximum = MAX_POLYGON_FLAGS5 if flag_index == 6 else MAX_BYTE
+            if not _is_int_in_range(flag, 0, maximum):
+                if flag_index == 6:
+                    error(f"Polygon {index} flag 6 (Flags5) must be 0 or 1")
+                else:
+                    error(f"Polygon {index} flag {flag_index} must be a byte (0..{MAX_BYTE})")
 
         if len(polygon.edges) != vertex_count:
             error(f"Polygon {index} has {vertex_count} vertices but {len(polygon.edges)} edges")

@@ -5,7 +5,7 @@ navmeshes with GTANAVMESH Edit. The Blender addon writes CodeWalker-compatible
 `.ynv.xml`; native `.ynv` compilation is deliberately a separate, opt-in
 step.
 
-Version: **v0.11.0**
+Version: **v0.11.1**
 Copyright © 2026 devsanja
 
 > Unofficial community tool. GTANAVMESH Edit is not affiliated with, endorsed
@@ -50,6 +50,30 @@ looks similar.
 If no trustworthy source exists, leave the source field empty. Set a unique
 `AreaID` manually, build/rebuild connectivity deliberately, and treat every
 portal, point and edge link as data that needs review.
+
+## Edit navmesh metadata from the sidebar
+
+The **GTANAVMESH Edit** tab presents the GTA navmesh values in both structured
+and raw forms. Select the navmesh mesh before changing cell-level metadata;
+select a face and use **Load Active** before changing polygon-level metadata.
+
+- **ContentFlags:** use the `Polygons`, `Portals`, `Vehicle`, `Unknown8` and
+  `Unknown16` toggles for the known values. The raw comma-separated
+  `ContentFlags` value remains the source of truth for unfamiliar tokens.
+- **Polygon fields:** `Flags1`, `Flags2`, `Flags3`, `Flags4`, `UnkX` and
+  `UnkY` accept 0–255; `Flags5 (B16)` accepts 0 or 1. They stay synchronized
+  with the raw `Flags` field and named bit controls.
+- **Named bits:** common labels such as `Footpath`, `Road`, `CellEdge`,
+  `FlatGround`, `Water`, `TrainTrack`, `ShallowWater`, `Interior` and slope
+  directions avoid manual packing. Do not infer a gameplay meaning for
+  controls labelled `Unknown` or `Unused`.
+- **EdgesFlags:** select the zero-based edge row, then edit `Poly1 Unk2`,
+  `Poly1 Unk3`, `Poly2 Unk2` and `Poly2 Unk3`. `Unk2` is 0–3 and `Unk3` is
+  0–2047. One `EdgesFlags` row is required per polygon vertex.
+
+Use **Apply** after editing a raw multi-line value, then run **Validate**. An
+unknown source value is not an error by itself; preserve it unless a reviewed
+change is needed for the target navmesh.
 
 ## Import an existing cell
 

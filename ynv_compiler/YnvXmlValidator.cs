@@ -81,9 +81,19 @@ internal static class YnvXmlValidator
             {
                 throw new InvalidDataException($"Polygon {polygonIndex} must have 6 or 7 Flags values.");
             }
-            foreach (var flag in flags)
+            for (var flagIndex = 0; flagIndex < flags.Count; flagIndex++)
             {
-                RequireRange(flag, 0, byte.MaxValue, $"Polygon {polygonIndex} Flags value");
+                // CodeWalker's seventh XML Flags value (Flags5) is stored in
+                // a single bit of PolyFlags1.  Reject higher values here
+                // rather than silently masking them during XmlYnv parsing.
+                var maximum = flagIndex == 6 ? 1 : byte.MaxValue;
+                RequireRange(
+                    flags[flagIndex],
+                    0,
+                    maximum,
+                    flagIndex == 6
+                        ? $"Polygon {polygonIndex} Flags5"
+                        : $"Polygon {polygonIndex} Flags value");
             }
 
             var vertices = ReadVertices(RequireChild(polygon, "Vertices"), polygonIndex);

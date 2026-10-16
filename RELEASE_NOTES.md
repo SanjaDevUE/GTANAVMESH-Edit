@@ -1,4 +1,4 @@
-# GTANAVMESH Edit v0.11.0
+# GTANAVMESH Edit v0.11.1
 
 Release date: 2026-10-16
 Copyright © 2026 devsanja
@@ -8,13 +8,36 @@ Copyright © 2026 devsanja
 
 ## Release asset
 
-Install **`GTANAVMESH-Edit-v0.11.0.zip`** from the release page through
+Install **`GTANAVMESH-Edit-v0.11.1.zip`** from the release page through
 Blender's **Edit > Preferences > Add-ons > Install...** command, then enable
 **GTANAVMESH Edit**.
 
 ## What is new
 
-v0.11.0 makes the add-on suitable for a safer existing-cell editing workflow:
+v0.11.1 makes GTA navmesh metadata directly editable from the visible
+**GTANAVMESH Edit** sidebar while retaining the safer existing-cell workflow:
+
+- `ContentFlags` now has individual **Polygons**, **Portals**, **Vehicle**,
+  **Unknown8** and **Unknown16** controls. These synchronize with the raw
+  comma-separated value and preserve unrecognised tokens from a source cell.
+- The active-polygon editor exposes numeric `Flags1`, `Flags2`, `Flags3`,
+  `Flags4`, `UnkX`, `UnkY` and `Flags5 (B16)` fields. The first six fields are
+  byte values; `Flags5 (B16)` is constrained to 0 or 1.
+- Named bit controls let you edit familiar flags such as **Footpath**,
+  **Road**, **CellEdge**, **FlatGround**, **Water**, **TrainTrack**,
+  **ShallowWater**, **Interior** and the slope-direction bits without
+  calculating packed values by hand. Unknown-labelled controls remain raw
+  data: preserve them unless the intended target requires a change.
+- The selected-edge editor exposes the packed `EdgesFlags` values as
+  `Poly1 Unk2`, `Poly1 Unk3`, `Poly2 Unk2` and `Poly2 Unk3`. The `Unk2`
+  fields accept 0–3 and the `Unk3` fields accept 0–2047; the corresponding
+  XML row is kept in `a:b, c:d` form.
+- Explicit `AreaID` and `ContentFlags` edits now win over a bound source XML
+  during export, including AreaID `0` and intentionally empty ContentFlags.
+- `Flags5 (B16)` is validated as its native 0-or-1 value, preventing a value
+  from being silently truncated by the native compiler.
+- The release ZIP now includes the explicit add-on package directory entry
+  required for reliable Blender upgrades.
 
 - Imported metadata is attached to stable face identities rather than only to
   Blender's changing polygon indexes.
@@ -33,7 +56,8 @@ v0.11.0 makes the add-on suitable for a safer existing-cell editing workflow:
 
 ## Compatibility and prerequisites
 
-- Blender 2.80 or newer is required; v0.11.0 was checked in Blender 4.1.
+- Blender 2.80 or newer is required; v0.11.1 was checked in Blender 3.5 and
+  Blender 4.1.
 - Sollumz is optional and is installed separately. When available, its
   navmesh properties are read and written directly.
 - CodeWalker is optional and is obtained separately; it is recommended for
@@ -50,8 +74,8 @@ CodeWalker, CodeWalker.Core, GTA V files or other third-party assets. See
 The release candidate passed add-on syntax checks, Blender background
 registration, direct import/re-export of a 2,534-polygon source cell,
 face-deletion export (2,533 polygons), reciprocal cross-cell edge-link checks,
-validator limit checks, .NET release compilation and native RSC7 `--check`
-readback.
+cell/polygon/edge editor synchronization, validator limit checks, .NET release
+compilation and native RSC7 `--check` readback.
 
 This verification covers export structure and binary readability. Review each
 changed cell in CodeWalker and test it in the intended game/mod setup before
@@ -60,6 +84,9 @@ distributing a replacement.
 ## Upgrade notes
 
 - Reinstall or reload the new ZIP in Blender after upgrading.
+- Open the 3D Viewport sidebar with `N` and choose **GTANAVMESH Edit**. Select
+  a navmesh mesh, then use **Load Active** before editing a polygon; the
+  structured fields mirror the raw values instead of replacing them.
 - Rebind the exact original `.ynv.xml` with **Load Source** if an older blend
   lacks an attached source path.
 - For geometry changes, load all affected neighbours, use **Rebuild Edges**,

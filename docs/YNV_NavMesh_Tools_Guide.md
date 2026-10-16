@@ -1,6 +1,6 @@
 # GTANAVMESH Edit - User Guide
 
-Version: **v0.11.0**
+Version: **v0.11.1**
 Copyright © 2026 devsanja
 
 ## 1. Purpose
@@ -129,7 +129,7 @@ If another loaded navmesh has a matching boundary edge at the same world positio
 
 1. In Blender, open `Edit > Preferences > Add-ons`.
 2. Use `Install...`.
-3. Select `GTANAVMESH-Edit-v0.11.0.zip`.
+3. Select `GTANAVMESH-Edit-v0.11.1.zip`.
 4. Enable `GTANAVMESH Edit`.
 5. Open the 3D View sidebar and use the `GTANAVMESH Edit` tab.
 
@@ -145,13 +145,57 @@ Use the original Source XML whenever possible so this value stays correct.
 
 ### ContentFlags
 
-The XML `ContentFlags` value, for example:
+The XML `ContentFlags` value is still shown as text, for example:
 
 `Polygons, Portals`
 
 or:
 
 `Polygons, Portals, Unknown8`
+
+For direct editing, the panel also provides five toggles:
+
+- `Polygons`
+- `Portals`
+- `Vehicle`
+- `Unknown8`
+- `Unknown16`
+
+Toggling a known value updates the comma-separated XML value. Other tokens
+from an imported source remain in the text field, so a new control does not
+discard an unfamiliar source flag. Use the raw field only when you need to
+preserve or deliberately author a value outside the named controls.
+
+### Structured Polygon Flags
+
+After selecting a face, use **Load Active** in **Polygon Editor**. The editor
+shows the raw `Flags` line and the matching individual values:
+
+- `Flags1`, `Flags2`, `Flags3`, `Flags4`, `UnkX` and `UnkY`: byte values
+  (0–255).
+- `Flags5 (B16)`: the single supported B16 value (0 or 1).
+
+Numeric fields, the raw `Flags` line and the bit controls stay synchronized.
+The visible named bits include `Footpath`, `Road`, `CellEdge`, `FlatGround`,
+`Water`, `TrainTrack`, `ShallowWater`, `Interior`, `PathNode`,
+`SteepSlope` and the eight slope-direction flags. Other controls are labelled
+as `Unknown` or `Unused` where their gameplay meaning is not established;
+they are still editable raw YNV data, not recommended defaults.
+
+### Structured Edge Flags
+
+Every polygon vertex has one `EdgesFlags` row. Choose the zero-based **Edge**
+index to expose that row as four bounded values:
+
+- `Poly1 Unk2` and `Poly2 Unk2` (0–3)
+- `Poly1 Unk3` and `Poly2 Unk3` (0–2047)
+
+The values are written back to the selected row in CodeWalker form:
+
+`Poly1 Unk2:Poly1 Unk3, Poly2 Unk2:Poly2 Unk3`
+
+The raw multi-line `EdgesFlags` value remains available. Keep exactly one
+edge link and one edge-flags row for each vertex of the polygon.
 
 ### Source XML
 
@@ -309,10 +353,18 @@ Loads the active face metadata into the editor:
 - edges
 - edge flags
 - portal refs
+- individual `Flags1`–`Flags5`, `UnkX` and `UnkY` controls
+- named polygon bit controls
+- the selected `EdgesFlags` row and its packed components
 
 ### Apply
 
 Writes the editor values back to the active face.
+
+For a flag-only change, the synchronized numeric, named-bit and selected-edge
+controls write to the current active polygon directly. **Apply** remains the
+safe explicit step after editing raw `Flags`, `Edges`, `EdgesFlags` or portal
+rows.
 
 ### Copy Flags
 
@@ -337,10 +389,13 @@ Expected result: bounds, points, flags and edge links should match the original.
 
 1. Select a face.
 2. Click `Load Active`.
-3. Change flag checkboxes or raw flag values.
-4. Click polygon `Apply`.
-5. Use `Validate`.
-6. Export.
+3. Change named bit checkboxes, `Flags1`–`Flags4`, `UnkX`, `UnkY` or
+   `Flags5 (B16)`. Use the raw `Flags` value only for an exact existing value.
+4. To edit edge metadata, select an **Edge** and change the two `Unk2` and
+   two `Unk3` values for that row.
+5. Click polygon `Apply` after any raw field change.
+6. Use `Validate`.
+7. Export.
 
 ### Adding a Custom Bridge or Walkway
 

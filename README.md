@@ -6,16 +6,29 @@ It is built for an XML-first workflow: inspect and edit the navmesh in
 Blender, validate the result, then optionally compile it to a native RSC7
 `.ynv` file.
 
-Version: **v0.11.0**
+Version: **v0.11.1**
 Copyright © 2026 devsanja
 
 > Unofficial community tool. GTANAVMESH Edit is not affiliated with, endorsed
 > by, or associated with Rockstar Games or Take-Two Interactive.
 
-## Highlights in v0.11.0
+## Highlights in v0.11.1
 
 - Direct import and export of `.ynv.xml` from Blender's **File** menu and the
   **GTANAVMESH Edit** sidebar.
+- A visible, structured GTA navmesh editor: cell-level `ContentFlags` toggles,
+  per-polygon flag fields and named bit controls, plus a per-edge
+  `EdgesFlags` editor. The raw XML-style fields remain available for exact
+  inspection and advanced edits.
+- `ContentFlags` offers separate **Polygons**, **Portals**, **Vehicle**,
+  **Unknown8** and **Unknown16** toggles. Changing a known toggle updates the
+  comma-separated value while retaining unrecognised source tokens.
+- Each active polygon exposes `Flags1`, `Flags2`, `Flags3`, `Flags4`, `UnkX`,
+  `UnkY`, and `Flags5 (B16)` alongside named controls such as **Footpath**,
+  **Road**, **CellEdge**, **FlatGround**, **Water**, **TrainTrack**,
+  **ShallowWater**, **Interior** and slope-direction bits.
+- Choose an edge row to edit its packed `EdgesFlags` parts directly:
+  `Poly1 Unk2`, `Poly1 Unk3`, `Poly2 Unk2` and `Poly2 Unk3`.
 - Stable face IDs preserve metadata when Blender reorders faces. Deleted
   source polygons are not silently restored during export.
 - Retains source `AreaID`, `ContentFlags`, bounds, polygon flags, `Edges`,
@@ -32,8 +45,8 @@ Copyright © 2026 devsanja
 
 ## Download and install
 
-1. Open the v0.11.0 release and download
-   **`GTANAVMESH-Edit-v0.11.0.zip`**. Do not unpack it before installation.
+1. Open the v0.11.1 release and download
+   **`GTANAVMESH-Edit-v0.11.1.zip`**. Do not unpack it before installation.
 2. In Blender, open **Edit > Preferences > Add-ons**.
 3. Choose **Install...**, select the downloaded ZIP, then enable
    **GTANAVMESH Edit**.
@@ -82,6 +95,26 @@ For an unmodified Rockstar source, normal validation may report legacy
 warnings such as zero-area corners or one-way local links. This is expected:
 **Strict Validation** is off by default so these sources remain inspectable.
 Enable it for newly authored geometry and final quality review.
+
+### Edit cell flags, polygon flags and edge flags
+
+1. Select the navmesh mesh and use **Use Selected** if necessary.
+2. In the cell section, use the `ContentFlags` toggles for **Polygons**,
+   **Portals**, **Vehicle**, **Unknown8** and **Unknown16**. Preserve unknown
+   source values unless you know the target cell requires a change.
+3. Select a face, choose **Load Active** in **Polygon Editor**, then edit the
+   numeric `Flags1`–`Flags4`, `UnkX`, `UnkY` and `Flags5 (B16)` fields or the
+   named bit controls. The controls stay synchronized with the raw `Flags`
+   field.
+4. For `EdgesFlags`, choose the zero-based **Edge** row, then edit the two
+   `Unk2` values (0–3) and two `Unk3` values (0–2047). The row is represented
+   as `Poly1 Unk2:Poly1 Unk3, Poly2 Unk2:Poly2 Unk3`.
+5. Use **Apply**, run **Validate**, then export. Keep one `Edges` and one
+   `EdgesFlags` row for every vertex of the edited polygon.
+
+Named bit labels are editing aids, not a promise of a fully known GTA gameplay
+meaning for every bit. Review unfamiliar or `Unknown` values against the
+original cell and in CodeWalker before changing them.
 
 ### Create a new cell
 
@@ -166,17 +199,41 @@ in-game navigation behavior.
 | --- | --- |
 | `ynv_blender_addon/` | Blender add-on source. |
 | `ynv_compiler/` | Optional .NET 8 XML-to-RSC7 compiler. |
+| `tools/package_blender_addon.py` | Deterministic release ZIP builder and layout verifier. |
 | `docs/` | Detailed import, source-binding and editing guides. |
-| `RELEASE_NOTES.md` | v0.11.0 release summary and verification scope. |
+| `RELEASE_NOTES.md` | v0.11.1 release summary and verification scope. |
 | `CHANGELOG.md` | Version history. |
 | `THIRD_PARTY_NOTICES.md` | External dependency and affiliation notice. |
 
 The optional CodeWalker.Core build dependency and Sollumz integration are
 external to the release asset; they are not add-on payload files.
 
+## Building a release ZIP
+
+Build every Blender release ZIP with the repository packaging script rather
+than a generic archive command:
+
+```powershell
+py .\tools\package_blender_addon.py --version 0.11.1
+py .\tools\package_blender_addon.py --check `
+  .\dist\GTANAVMESH-Edit-v0.11.1.zip
+```
+
+The builder creates `dist/GTANAVMESH-Edit-v0.11.1.zip`, rejects accidental
+replacement unless `--force` is supplied, and prints the SHA-256 digest. It
+also writes a real `ynv_blender_addon/` directory entry as the first ZIP
+member. That explicit package-root entry is required by this project's Blender
+installation workflow; an archive containing only
+`ynv_blender_addon/__init__.py` file records is rejected by `--check`.
+
+Use the `--output` option only when a nonstandard artifact destination is
+needed. Before publishing, run `--check` against the exact ZIP that will be
+uploaded, install that ZIP in a clean Blender profile, enable the add-on, and
+confirm that the **GTANAVMESH Edit** sidebar tab is present.
+
 ## Release verification
 
-v0.11.0 was verified with the following checks before packaging:
+v0.11.1 is verified with the following checks before packaging:
 
 - Python syntax compilation for the add-on modules.
 - Blender 4.1 background registration and unregistration.
@@ -185,10 +242,16 @@ v0.11.0 was verified with the following checks before packaging:
 - Deletion of one imported face, confirming that export contains exactly
   2,533 polygons and does not revive the source face.
 - Reciprocal cross-cell link generation with two adjacent test cells.
+- Cell `ContentFlags`, named polygon-bit, raw polygon-field and selected-edge
+  flag editor synchronization.
 - Python validation boundary checks, including AreaID, float and
   adjacent-area limits.
 - Release build of `ynv_compiler`, followed by XML-to-RSC7 compilation and
   `--check` verification.
+
+For every release, additionally verify the exact upload ZIP with
+`tools/package_blender_addon.py --check`; it requires an explicit
+`ynv_blender_addon/` package-root directory entry.
 
 These checks establish structural compatibility and binary readability. They
 do not replace review in CodeWalker or in-game behavior testing for a specific
@@ -198,7 +261,7 @@ mod configuration.
 
 - [Import, source binding and native compilation](docs/YNV_Import_Source_Compile.md)
 - [Navmesh tools user guide](docs/YNV_NavMesh_Tools_Guide.md)
-- [v0.11.0 release notes](RELEASE_NOTES.md)
+- [v0.11.1 release notes](RELEASE_NOTES.md)
 - [Changelog](CHANGELOG.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 
