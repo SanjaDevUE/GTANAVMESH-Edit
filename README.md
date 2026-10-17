@@ -16,6 +16,10 @@ Copyright © 2026 devsanja
 > Unofficial community tool. GTANAVMESH Edit is not affiliated with, endorsed
 > by, or associated with Rockstar Games or Take-Two Interactive.
 
+![GTANAVMESH Edit in Blender showing colored navmesh polygons and the Quick Face Edit panel](docs/images/gtanavmesh-edit-preview.png)
+
+Colored navmesh polygons and the Quick Face Edit panel in Blender.
+
 ## Highlights in v0.12.2
 
 - Direct import and export of `.ynv.xml` from Blender's **File** menu and the
