@@ -5,7 +5,7 @@ navmeshes with GTANAVMESH Edit. The Blender addon writes CodeWalker-compatible
 `.ynv.xml`; native `.ynv` compilation is deliberately a separate, opt-in
 step.
 
-Version: **v0.11.1**
+Version: **v0.12.0**
 Copyright © 2026 devsanja
 
 > Unofficial community tool. GTANAVMESH Edit is not affiliated with, endorsed
@@ -21,6 +21,10 @@ source additionally requires the .NET 8 SDK and a compatible local
 
 The release ZIP contains GTANAVMESH Edit only. It does not package Sollumz,
 CodeWalker, CodeWalker.Core, GTA V files or other third-party assets.
+
+GTANAVMESH Edit directly imports **`.ynv.xml`**, not native binary `.ynv`
+files. The optional compiler writes a binary only after validated XML export;
+it is not a binary importer or a replacement for source XML review.
 
 ## Choose the source deliberately
 
@@ -47,8 +51,14 @@ Confirm its choice in the `Source XML` field. Keep the original XML outside
 the export folder and never use an unrelated cell merely because its name
 looks similar.
 
+An explicit `AreaID` **0** is a real, valid cell identifier and is preserved
+as such. The valid range is 0–16382; `16383` is the reserved open-edge
+sentinel, not an editable cell identity. Do not replace an imported zero with
+another AreaID merely because a zero-valued field looks unset.
+
 If no trustworthy source exists, leave the source field empty. Set a unique
-`AreaID` manually, build/rebuild connectivity deliberately, and treat every
+`AreaID` manually (including `0` only when that is deliberately the target
+cell), build/rebuild connectivity deliberately, and treat every
 portal, point and edge link as data that needs review.
 
 ## Edit navmesh metadata from the sidebar
@@ -63,10 +73,20 @@ select a face and use **Load Active** before changing polygon-level metadata.
 - **Polygon fields:** `Flags1`, `Flags2`, `Flags3`, `Flags4`, `UnkX` and
   `UnkY` accept 0–255; `Flags5 (B16)` accepts 0 or 1. They stay synchronized
   with the raw `Flags` field and named bit controls.
-- **Named bits:** common labels such as `Footpath`, `Road`, `CellEdge`,
-  `FlatGround`, `Water`, `TrainTrack`, `ShallowWater`, `Interior` and slope
-  directions avoid manual packing. Do not infer a gameplay meaning for
-  controls labelled `Unknown` or `Unused`.
+- **Named bits:** all 33 known GTA V bits are available in native storage
+  groups: `Flags1` B00–B07, `Flags2` B08–B15, optional `Flags5` B16,
+  `Flags3` B17–B24 and `Flags4` B25–B32. This includes `Footpath`, `Road`,
+  `CellEdge`, `FlatGround`, `Water`, `TrainTrack`, `ShallowWater`, `Interior`,
+  `PathNode` and the eight slope directions. Do not infer a gameplay meaning
+  for controls labelled `Unknown` or `Unused`.
+- **Bulk bit painting:** enable **Change named bit on selected faces** before
+  clicking a checkbox to change only that bit across selected faces. The tool
+  preserves each face's other bits and `UnkX`/`UnkY`; use **Apply Flags to
+  Selected** only when copying the complete raw flag set is intended.
+- **Flag colors:** **Show Flag Colors** switches the current 3D View to
+  Material Preview and **Refresh Colors** reapplies display materials. The
+  additive colors and 0.75 alpha follow CodeWalker's calculation; they are a
+  diagnostic display rather than a semantic flag validator.
 - **EdgesFlags:** select the zero-based edge row, then edit `Poly1 Unk2`,
   `Poly1 Unk3`, `Poly2 Unk2` and `Poly2 Unk3`. `Unk2` is 0–3 and `Unk3` is
   0–2047. One `EdgesFlags` row is required per polygon vertex.
@@ -85,8 +105,10 @@ change is needed for the target navmesh.
    the export model; it does not prove in-game navigation behavior. Leave
    **Strict Validation** disabled for an unmodified Rockstar source with
    legacy warnings; enable it for newly authored geometry and final review.
-4. Keep neighbouring cells loaded when changing a boundary. Use **Export All**
-   for a multi-cell change so reciprocal cross-cell edges can be checked.
+4. When changing a boundary, switch to Object Mode and use **Load Neighbours**
+   after the source XML is bound. It safely loads only expected surrounding
+   source files from that source folder. Use **Export All** for a multi-cell
+   change so reciprocal cross-cell edges can be checked.
 
 Sollumz-imported navmeshes are supported too. When both addons are enabled,
 GTANAVMESH Edit reads the Sollumz navmesh properties as well as its own
@@ -96,8 +118,8 @@ attach it manually with **Load Source**.
 ## Create a new cell
 
 1. Decide which world/navmesh cell the mesh belongs to and assign a unique,
-   valid `AreaID` first. Do not copy an existing area ID for a production
-   replacement.
+   valid `AreaID` first. AreaID 0 is valid if it is the intended cell; do not
+   copy an existing ID for a production replacement.
 2. Press **New Navmesh** (`cw_navmesh.create_navmesh`) to make the starter
    triangle, then model only walkable faces.
 3. Set polygon flags and material semantics, add points/portals only when
@@ -110,6 +132,58 @@ the live Blender face list—deleted source polygons are never retained—but it
 cannot infer gameplay intent such as portal placement, edge flags or an
 unloaded neighbour's polygon identity. Inspect these in CodeWalker and test in
 the target game/mod setup.
+
+## Generate from selected collision or mesh geometry
+
+Use **Generate Navmesh From Selected Mesh** when a regular mesh or collision
+surface is a better starting point than the single-triangle **New Navmesh**
+cell. Select a non-navmesh mesh and set the intended `AreaID`/`ContentFlags`
+in the panel first. In Object Mode the generator considers all source faces;
+in Edit Mode it considers selected faces only.
+
+The dialog offers a maximum walkable slope, Flat Ground/Footpath/Road/empty
+starting flags, and exact duplicate removal. The new navmesh is separate from
+the source mesh. Source faces are triangulated in world space, downward
+winding is corrected, degenerate and too-steep triangles are skipped, and
+local edge links are built.
+
+The result still needs authoring review. The generator does not decode collision
+materials into gameplay flags, raycast obstacle clearance, decide portal
+locations, infer cross-cell ownership, or resolve non-manifold geometry.
+Review accepted faces and open edges, add markers deliberately, load relevant
+neighbours, rebuild links, validate and test before using the export.
+
+## Load neighbouring source cells
+
+**Load Neighbours** requires an existing explicit Source XML on the selected
+navmesh and runs only in Object Mode. It uses the source file's folder and
+CodeWalker's grid convention:
+
+```text
+AreaID = y * 100 + x
+navmesh[x * 3][y * 3].ynv.xml
+```
+
+By default it considers the eight surrounding cells (including diagonals).
+It skips already loaded cells, files that are absent/unreadable, and a file
+whose embedded `AreaID` differs from the expected cell. This prevents a
+same-named but wrong source file from silently producing invalid edge targets.
+It is not a directory-wide discovery feature. After a boundary edit, use
+**Rebuild Edges** with all relevant cells loaded and export them together with
+**Export All**.
+
+## Points and portals
+
+**Add Point** and **Add Portal** require a selected GTANAVMESH Edit navmesh
+root. New points are parented under its local point hierarchy, and no orphan
+marker is created if there is no valid navmesh selection.
+
+For a new portal, the active face is `PolyFrom`; another selected face becomes
+`PolyTo` when available. The creator writes the portal-reference rows on the
+affected polygons immediately. A single valid face creates an explicit
+self-reference that must be reviewed, rather than silently choosing polygon
+zero. Select the resulting portal in Blender to edit its type, angle, face
+references and position.
 
 ## XML export and optional native `.ynv` compilation
 

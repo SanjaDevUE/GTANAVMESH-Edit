@@ -138,13 +138,15 @@ class PdfBuilder:
             return
         if kind == "h1":
             self.y -= 6
-            self.ensure(2)
+            # Keep a major heading with enough following body text to avoid
+            # an orphaned section title at the bottom of a page.
+            self.ensure(5)
             self.text(LEFT, self.y, H1_SIZE, text, font="F2")
             self.y -= 22
             return
         if kind == "h2":
             self.y -= 3
-            self.ensure(2)
+            self.ensure(3)
             self.text(LEFT, self.y, H2_SIZE, text, font="F2")
             self.y -= 18
             return

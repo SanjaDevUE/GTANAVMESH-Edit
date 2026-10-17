@@ -3,7 +3,7 @@
 bl_info = {
     "name": "GTANAVMESH Edit",
     "author": "devsanja",
-    "version": (0, 11, 1),
+    "version": (0, 12, 0),
     "blender": (2, 80, 0),
     "location": "File > Import/Export; View3D > Sidebar > GTANAVMESH Edit",
     "description": "GTANAVMESH Edit imports, edits and exports GTA V YNV navmesh XML with CodeWalker validation.",
@@ -75,6 +75,7 @@ YNV_NEXT_FACE_ID = "ynv_next_face_id"
 YNV_METADATA_VERSION = "ynv_polygon_metadata_version"
 YNV_REFERENCE_FACE_IDS = "ynv_edge_reference_face_ids_json"
 YNV_PORTAL_REFERENCE_FACE_IDS = "ynv_portal_reference_face_ids_json"
+YNV_PORTAL_ORDER = "ynv_portal_order"
 NO_SOURCE_POLYGON = -1
 _PENDING_POLYGON_EDITOR_LOADS = set()
 _PENDING_SETTINGS_SYNCS = set()
@@ -118,6 +119,17 @@ POLYGON_FLAG_BITS = (
     ("flag_b30_slope_north_west", "B30 SlopeNorthWest", 30),
     ("flag_b31_slope_west", "B31 SlopeWest", 31),
     ("flag_b32_slope_south_west", "B32 SlopeSouthWest", 32),
+)
+
+# Keep the full CodeWalker bit layout visible in the sidebar.  The raw XML
+# uses four flag bytes plus the optional B16 byte, while the labels are easier
+# to work with when grouped by their known purpose.
+POLYGON_FLAG_GROUPS = (
+    ("Flags1 — general (B00–B07)", POLYGON_FLAG_BITS[0:8]),
+    ("Flags2 — behaviour (B08–B15)", POLYGON_FLAG_BITS[8:16]),
+    ("Flags5 — optional B16", POLYGON_FLAG_BITS[16:17]),
+    ("Flags3 — surface category (B17–B24)", POLYGON_FLAG_BITS[17:25]),
+    ("Flags4 — slope direction (B25–B32)", POLYGON_FLAG_BITS[25:33]),
 )
 
 
@@ -487,6 +499,11 @@ def _bounds_enclose(candidate, actual, epsilon=1.0e-4):
     )
 
 
+def _bounds_have_positive_extent(bounds):
+    bb_min, bb_max, _bb_size = bounds
+    return all(maximum > minimum for minimum, maximum in zip(_vec_to_tuple(bb_min), _vec_to_tuple(bb_max)))
+
+
 def _select_export_bounds(mesh_obj, source_navmesh, polygons, portals, points):
     """Keep source bounds byte-for-byte stable unless edited data escapes them."""
     calculated = _calculate_bounds(polygons, portals, points)
@@ -506,7 +523,10 @@ def _select_export_bounds(mesh_obj, source_navmesh, polygons, portals, points):
         candidates.append(("Sollumz", sollumz_bounds))
 
     for label, candidate in candidates:
-        if not has_data or _bounds_enclose(candidate, calculated):
+        # Preserve a valid source bound exactly, but never retain a flat/zero
+        # extent bound that CodeWalker's serializer rejects.  A newly computed
+        # bound expands degenerate axes by a small safe envelope.
+        if _bounds_have_positive_extent(candidate) and (not has_data or _bounds_enclose(candidate, calculated)):
             return candidate[0], candidate[1], candidate[2], label
     return calculated[0], calculated[1], calculated[2], None
 
@@ -599,14 +619,16 @@ def _store_sollumz_import_source(root_obj, filepath):
     area_id = source_navmesh.area_id if source_navmesh else _get_sollumz_navmesh_area_id(mesh_obj or root_obj, 0)
     content_flags = (
         source_navmesh.content_flags
-        if source_navmesh and source_navmesh.content_flags
+        if source_navmesh is not None
         else _get_sollumz_navmesh_content_flags(mesh_obj or root_obj, DEFAULT_CONTENT_FLAGS)
     )
     for owner in owners:
         _store_source_xml_path(owner, filepath)
-        if area_id:
+        # A source XML authoritatively supplies its AreaID, including tile 0.
+        # Sollumz's unmarked default zero remains intentionally ignored.
+        if source_navmesh is not None or area_id:
             owner["ynv_area_id"] = area_id
-        if content_flags:
+        if source_navmesh is not None or content_flags:
             owner["ynv_content_flags"] = content_flags
 
     if mesh_obj:
@@ -1191,10 +1213,10 @@ def _apply_source_navmesh_to_mesh(mesh_obj, source_path, navmesh=None):
     navmesh = navmesh or read_navmesh_xml(source_path)
     _set_source_xml_path(mesh_obj, source_path)
     mesh_obj["ynv_area_id"] = navmesh.area_id
-    mesh_obj["ynv_content_flags"] = navmesh.content_flags or DEFAULT_CONTENT_FLAGS
+    mesh_obj["ynv_content_flags"] = navmesh.content_flags
     if mesh_obj.parent:
         mesh_obj.parent["ynv_area_id"] = navmesh.area_id
-        mesh_obj.parent["ynv_content_flags"] = navmesh.content_flags or DEFAULT_CONTENT_FLAGS
+        mesh_obj.parent["ynv_content_flags"] = navmesh.content_flags
     _store_source_navmesh_snapshot(mesh_obj, navmesh)
     _store_navmesh_bounds(mesh_obj, navmesh.bb_min, navmesh.bb_max, navmesh.bb_size)
 
@@ -1356,8 +1378,18 @@ def _calculate_bounds(polygons, portals, points):
         zero = Vec3(0.0, 0.0, 0.0)
         return zero, zero, zero
 
-    bb_min = Vec3(min(v.x for v in coords), min(v.y for v in coords), min(v.z for v in coords))
-    bb_max = Vec3(max(v.x for v in coords), max(v.y for v in coords), max(v.z for v in coords))
+    minimum = [min(v.x for v in coords), min(v.y for v in coords), min(v.z for v in coords)]
+    maximum = [max(v.x for v in coords), max(v.y for v in coords), max(v.z for v in coords)]
+    # CodeWalker's binary-compatible validation requires BBMax > BBMin on all
+    # axes.  A perfectly flat floor is common when generating from collision,
+    # so give only a degenerate axis a small symmetric envelope instead of
+    # rejecting an otherwise valid walk surface.
+    for axis in range(3):
+        if maximum[axis] <= minimum[axis]:
+            minimum[axis] -= 0.01
+            maximum[axis] += 0.01
+    bb_min = Vec3(*minimum)
+    bb_max = Vec3(*maximum)
     bb_size = Vec3(bb_max.x - bb_min.x, bb_max.y - bb_min.y, bb_max.z - bb_min.z)
     return bb_min, bb_max, bb_size
 
@@ -1377,6 +1409,7 @@ def _new_empty(name, sollum_type=None):
 
 
 def _material_color_for_flags(flags):
+    """Return CodeWalker's additive flag colour, including its 0.75 alpha."""
     values = [int(value) for value in flags[:7]]
     while len(values) < 7:
         values.append(0)
@@ -1422,9 +1455,28 @@ def _set_material_color(mat, color):
     mat.diffuse_color = color
     mat.metallic = 0.0
     mat.roughness = 0.4
-    mat.blend_method = "OPAQUE"
-    mat.use_screen_refraction = False
-    mat.show_transparent_back = False
+    # CodeWalker renders nav polygons at alpha 0.75.  Opaque Blender materials
+    # kept the calculated alpha invisible, which made the flag colour preview
+    # look like it was missing.  Blender 3.x/4.1 uses blend_method; newer
+    # Blender builds may expose the replacement RNA property instead.
+    try:
+        mat.blend_method = "BLEND"
+    except (AttributeError, TypeError, ValueError):
+        pass
+    # Blender 4.1 exposes both properties.  Set the new one independently so
+    # its default dithered mode cannot override the requested smooth alpha.
+    try:
+        mat.surface_render_method = "BLENDED"
+    except (AttributeError, TypeError, ValueError):
+        pass
+    try:
+        mat.use_screen_refraction = False
+    except (AttributeError, TypeError):
+        pass
+    try:
+        mat.show_transparent_back = False
+    except (AttributeError, TypeError):
+        pass
     try:
         mat.use_nodes = True
         bsdf = mat.node_tree.nodes.get("Principled BSDF")
@@ -1448,6 +1500,40 @@ def _create_material_for_flags(flags):
     return mat
 
 
+def _refresh_flag_materials(mesh_obj):
+    """Assign the current CodeWalker flag colour to every live polygon.
+
+    This is deliberately an explicit display helper: it does not change XML
+    metadata, geometry or a flag value.  It is useful after importing a blend
+    made with another add-on, or after editing raw flag text in bulk.
+    """
+    if not mesh_obj or mesh_obj.type != "MESH":
+        raise ValueError("Select a navmesh mesh before refreshing flag colours.")
+
+    polygon_flags, _edges, _edges_flags, _portals = _ensure_polygon_metadata(mesh_obj)
+    material_indices = {}
+    refreshed = 0
+    for index, flags in enumerate(polygon_flags):
+        if index >= len(mesh_obj.data.polygons):
+            break
+        material = _create_material_for_flags(flags)
+        material_index = material_indices.get(material.name)
+        if material_index is None:
+            material_index = next(
+                (slot for slot, existing in enumerate(mesh_obj.data.materials) if existing == material),
+                None,
+            )
+            if material_index is None:
+                mesh_obj.data.materials.append(material)
+                material_index = len(mesh_obj.data.materials) - 1
+            material_indices[material.name] = material_index
+        polygon = mesh_obj.data.polygons[index]
+        polygon.material_index = material_index
+        refreshed += 1
+    mesh_obj.data.update()
+    return refreshed
+
+
 def _create_navmesh_mesh_from_data(navmesh):
     vertices = []
     faces = []
@@ -1462,7 +1548,7 @@ def _create_navmesh_mesh_from_data(navmesh):
     obj = bpy.data.objects.new("NavMesh Poly Mesh", mesh)
     obj[YNV_MESH_TAG] = True
     obj["ynv_area_id"] = navmesh.area_id
-    obj["ynv_content_flags"] = navmesh.content_flags or DEFAULT_CONTENT_FLAGS
+    obj["ynv_content_flags"] = navmesh.content_flags
     _write_polygon_metadata(
         obj,
         [polygon.flags for polygon in navmesh.polygons],
@@ -1511,7 +1597,7 @@ def _create_point_object(point, index):
     return obj
 
 
-def _create_portal_object(portal, index):
+def _create_portal_object(portal, index, order=None):
     center = Vec3(
         (portal.position_from.x + portal.position_to.x) * 0.5,
         (portal.position_from.y + portal.position_to.y) * 0.5,
@@ -1521,6 +1607,10 @@ def _create_portal_object(portal, index):
     obj.location = _vec_to_tuple(center)
     obj.rotation_euler = (0.0, 0.0, portal.angle)
     obj[YNV_PORTAL_TAG] = True
+    # Object names must be globally unique in Blender and therefore can gain a
+    # .001 suffix in another imported cell.  Keep the YNV portal order as data
+    # rather than depending on that UI name.
+    obj[YNV_PORTAL_ORDER] = int(index if order is None else order)
     _write_sollumz_portal_properties(obj, portal)
     obj["ynv_position_from"] = _json_vec(portal.position_from)
     obj["ynv_position_to"] = _json_vec(portal.position_to)
@@ -1557,7 +1647,7 @@ def import_navmesh_xml(filepath, context=None):
     root = _new_empty(name, "sollumz_navmesh")
     root[YNV_COLLECTION_TAG] = True
     root["ynv_area_id"] = navmesh.area_id
-    root["ynv_content_flags"] = navmesh.content_flags or DEFAULT_CONTENT_FLAGS
+    root["ynv_content_flags"] = navmesh.content_flags
     _store_source_xml_path(root, filepath)
     _collection_link(context.collection, root)
 
@@ -1676,6 +1766,124 @@ def _read_area_id_from_xml(path):
     except Exception:
         return 0
     return navmesh.area_id
+
+
+def _source_xml_for_neighbour_loading(mesh_obj, context):
+    """Return the explicit source XML that defines a cell's source folder.
+
+    Neighbour loading deliberately does not scan broadly for a similarly named
+    file.  The selected navmesh's bound source is the authority; the panel
+    value is accepted only as an explicit user fallback for a newly created
+    mesh.  This keeps a scene with several GTA map folders from importing a
+    tile from the wrong project.
+    """
+    candidates = list(_stored_source_values(mesh_obj))
+    try:
+        panel_source = str(_scene_settings(context).source_xml_path or "").strip()
+    except (AttributeError, RuntimeError, TypeError):
+        panel_source = ""
+    if panel_source:
+        candidates.append(panel_source)
+
+    seen = set()
+    for value in candidates:
+        source_path = _resolve_source_value(value, mesh_obj.name + ".ynv.xml")
+        if not source_path:
+            continue
+        try:
+            source_path = source_path.resolve()
+        except OSError:
+            continue
+        if source_path in seen or not source_path.is_file():
+            continue
+        seen.add(source_path)
+        return source_path
+    raise ValueError("Set an existing Source XML on this navmesh before loading neighbouring cells.")
+
+
+def _area_id_for_neighbour_loading(mesh_obj, source_path):
+    """Return the active cell's deliberate AreaID, preserving AreaID 0."""
+    explicit_area_id = _explicit_navmesh_area_id(mesh_obj)
+    if explicit_area_id is not None:
+        return int(explicit_area_id)
+    try:
+        return int(read_navmesh_xml(source_path).area_id)
+    except Exception as exc:
+        raise ValueError(f"Could not read AreaID from {Path(source_path).name}: {exc}") from exc
+
+
+def _codewalker_area_to_cell(area_id):
+    """Map CodeWalker's AreaID into its two-dimensional cell coordinates."""
+    try:
+        area_id = int(area_id)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("AreaID must be a non-negative integer.") from exc
+    if area_id < 0:
+        raise ValueError("AreaID must be a non-negative integer.")
+    return area_id % 100, area_id // 100
+
+
+def _codewalker_neighbour_cells(area_id, include_diagonals=True):
+    """Yield adjacent AreaIDs using CodeWalker's AreaID % 100 grid layout."""
+    cell_x, cell_y = _codewalker_area_to_cell(area_id)
+    offsets = (
+        (-1, -1), (0, -1), (1, -1),
+        (-1, 0), (1, 0),
+        (-1, 1), (0, 1), (1, 1),
+    )
+    if not include_diagonals:
+        offsets = ((0, -1), (-1, 0), (1, 0), (0, 1))
+    for offset_x, offset_y in offsets:
+        neighbour_x = cell_x + offset_x
+        neighbour_y = cell_y + offset_y
+        # AreaID encodes X in the low two decimal digits.  Do not wrap a
+        # western/eastern boundary around into another Y row.
+        if not 0 <= neighbour_x <= 99 or neighbour_y < 0:
+            continue
+        neighbour_area_id = (neighbour_y * 100) + neighbour_x
+        yield neighbour_area_id, neighbour_x, neighbour_y
+
+
+def _codewalker_neighbour_source_paths(source_path, area_id, include_diagonals=True):
+    """Yield (AreaID, path) pairs beside a known source XML.
+
+    CodeWalker names a YNV source cell as ``navmesh[x*3][y*3].ynv.xml`` while
+    AreaID itself is ``y * 100 + x``.  Keeping this conversion in one helper
+    makes the operator independently testable and avoids accidental filename
+    guesses such as treating the AreaID as a coordinate directly.
+    """
+    try:
+        folder = Path(source_path).resolve().parent
+    except OSError as exc:
+        raise ValueError(f"Could not resolve the source XML folder: {exc}") from exc
+    for neighbour_area_id, cell_x, cell_y in _codewalker_neighbour_cells(area_id, include_diagonals):
+        filename = f"navmesh[{cell_x * 3}][{cell_y * 3}].ynv.xml"
+        yield neighbour_area_id, folder / filename
+
+
+def _loaded_navmesh_area_ids(context):
+    """Return known AreaIDs without treating an unsourced mesh as AreaID 0."""
+    loaded_area_ids = set()
+    for mesh_obj in _scene_navmesh_meshes(context):
+        area_id = _explicit_navmesh_area_id(mesh_obj)
+        if area_id is None:
+            for source_value in _stored_source_values(mesh_obj):
+                source_path = _resolve_source_value(source_value, mesh_obj.name + ".ynv.xml")
+                if not source_path:
+                    continue
+                try:
+                    area_id = int(read_navmesh_xml(source_path).area_id)
+                except Exception:
+                    continue
+                break
+        if area_id is None:
+            # Sollumz does not expose whether its default zero was authored,
+            # so only a non-zero value is reliable in this fallback branch.
+            sollumz_area_id = _get_sollumz_navmesh_area_id(mesh_obj, 0)
+            area_id = int(sollumz_area_id) if sollumz_area_id else None
+        if area_id is not None:
+            loaded_area_ids.add(int(area_id))
+    return loaded_area_ids
 
 
 def _source_search_dirs(export_filepath=None):
@@ -2075,7 +2283,11 @@ def _navmesh_root(mesh_obj):
 def _child_empty(root_obj, name):
     if root_obj:
         for child in root_obj.children:
-            if child.name == name:
+            # Blender makes globally unique object names (for example
+            # ``Points.001`` for the second imported navmesh).  Treat that
+            # canonical Blender suffix as the same per-root marker group so
+            # repeated Add Point/Add Portal actions never create stray groups.
+            if child.name == name or child.name.startswith(name + "."):
                 return child
     empty = _new_empty(name)
     if root_obj:
@@ -2132,6 +2344,17 @@ def _object_sort_key(obj):
     if match:
         return (obj.name[: match.start()], int(match.group(1)))
     return (obj.name, -1)
+
+
+def _portal_object_sort_key(obj):
+    """Sort portals by their saved YNV order, not Blender's display suffix."""
+    try:
+        order = int(obj.get(YNV_PORTAL_ORDER))
+    except (AttributeError, TypeError, ValueError):
+        order = -1
+    if order >= 0:
+        return (0, order, _object_sort_key(obj))
+    return (1, 0, _object_sort_key(obj))
 
 
 def _active_polygon_index(mesh_obj):
@@ -2468,6 +2691,40 @@ def _apply_current_flags_to_active_polygon(context, settings):
                 pass
 
 
+def _apply_flag_bit_to_selected_polygons(context, bit, enabled):
+    """Paint one flag checkbox over selected faces while preserving their data."""
+    if not context:
+        return 0
+    try:
+        mesh_obj = _selected_navmesh_object(context)
+    except Exception:
+        return 0
+    if not mesh_obj or mesh_obj.type != "MESH":
+        return 0
+
+    selected_indices = _selected_polygon_indices(mesh_obj)
+    if not selected_indices:
+        selected_indices = [_active_polygon_index(mesh_obj)]
+    selected_indices = [index for index in selected_indices if index >= 0]
+    if not selected_indices:
+        return 0
+
+    was_edit_mode = mesh_obj.mode == "EDIT"
+    if was_edit_mode:
+        try:
+            bpy.ops.object.mode_set(mode="OBJECT")
+        except Exception:
+            return 0
+    try:
+        return _set_polygon_flag_bit(mesh_obj, selected_indices, bit, enabled)
+    finally:
+        if was_edit_mode:
+            try:
+                bpy.ops.object.mode_set(mode="EDIT")
+            except Exception:
+                pass
+
+
 def _sync_flag_checkboxes_from_flags(settings, flags):
     global _SYNCING_FLAG_CHECKBOXES
     _SYNCING_FLAG_CHECKBOXES = True
@@ -2489,7 +2746,10 @@ def _make_flag_checkbox_update(bit, attr_name):
         flags = _set_flag_enabled(flags, bit, bool(getattr(self, attr_name)))
         _set_polygon_flag_text(self, flags)
         _sync_polygon_flag_values_from_flags(self, flags)
-        _apply_current_flags_to_active_polygon(context, self)
+        if getattr(self, "apply_flag_bit_to_selected", False):
+            _apply_flag_bit_to_selected_polygons(context, bit, bool(getattr(self, attr_name)))
+        else:
+            _apply_current_flags_to_active_polygon(context, self)
 
     return update
 
@@ -2628,6 +2888,42 @@ def _set_polygon_flags(mesh_obj, polygon_indices, flags):
     _write_polygon_metadata(mesh_obj, polygon_flags, polygon_edges, polygon_edges_flags, polygon_portals)
 
 
+def _set_polygon_flag_bit(mesh_obj, polygon_indices, bit, enabled):
+    """Change one named GTA flag bit without overwriting other face metadata.
+
+    ``Apply Flags to Selected`` intentionally copies all seven raw flag fields.
+    This helper is the safe counterpart for painting one checkbox across a
+    selection: every face keeps its own unrelated bits and its UnkX/UnkY data.
+    """
+    polygon_flags, polygon_edges, polygon_edges_flags, polygon_portals = _ensure_polygon_metadata(mesh_obj)
+    material_indices = {}
+    changed = 0
+
+    for index in polygon_indices:
+        if index < 0 or index >= len(mesh_obj.data.polygons) or index >= len(polygon_flags):
+            continue
+        flags = _set_flag_enabled(polygon_flags[index], bit, enabled)
+        polygon_flags[index] = flags
+
+        material = _create_material_for_flags(flags)
+        material_index = material_indices.get(material.name)
+        if material_index is None:
+            material_index = next(
+                (slot for slot, existing in enumerate(mesh_obj.data.materials) if existing == material),
+                None,
+            )
+            if material_index is None:
+                mesh_obj.data.materials.append(material)
+                material_index = len(mesh_obj.data.materials) - 1
+            material_indices[material.name] = material_index
+        mesh_obj.data.polygons[index].material_index = material_index
+        changed += 1
+
+    _write_polygon_metadata(mesh_obj, polygon_flags, polygon_edges, polygon_edges_flags, polygon_portals)
+    mesh_obj.data.update()
+    return changed
+
+
 def _build_local_edge_links(mesh_obj, area_id, existing_edges=None):
     mesh = mesh_obj.data
     metadata = _read_polygon_metadata(mesh_obj)
@@ -2660,10 +2956,13 @@ def _build_local_edge_links(mesh_obj, area_id, existing_edges=None):
         for edge_index, key in enumerate(face_edge_keys[polygon.index]):
             old_edge = old_rows[edge_index] if edge_index < len(old_rows) else DEFAULT_EDGE
             linked_faces = [face_index for face_index, _ in edge_map.get(key, []) if face_index != polygon.index]
-            if linked_faces:
+            if len(linked_faces) == 1:
                 linked_face = linked_faces[0]
                 new_edge = f"{area_id}:{linked_face}, {area_id}:{linked_face}"
             else:
+                # A non-manifold edge has more than one possible neighbour.
+                # Do not invent an arbitrary edge relationship; retain an
+                # authored row or leave a new edge open for the user to fix.
                 new_edge = old_edge if old_edge != DEFAULT_EDGE else DEFAULT_EDGE
             if new_edge != old_edge:
                 changed_edges += 1
@@ -2726,7 +3025,9 @@ def _write_edge_links(mesh_obj, polygon_edges, metadata=None):
 def _build_cross_cell_index(mesh_area_pairs):
     index = {}
     for mesh_obj, area_id in mesh_area_pairs:
-        if not area_id:
+        # AreaID 0 is a valid GTA cell; only an actual missing value is not
+        # addressable in an edge link.
+        if area_id is None:
             continue
         for (polygon_index, edge_index), key in _boundary_edge_records(mesh_obj).items():
             # Keep the counterpart's exact corner and object so a one-cell
@@ -2741,7 +3042,7 @@ def _build_cross_cell_index(mesh_area_pairs):
 
 
 def _apply_cross_cell_edge_links(mesh_obj, area_id, cross_index, duplicate_keys):
-    if not area_id:
+    if area_id is None:
         return 0, 0
     polygon_edge_keys = _boundary_edge_records(mesh_obj)
     current_metadata = _read_polygon_metadata(mesh_obj)
@@ -2803,7 +3104,7 @@ def _apply_cross_cell_edge_links(mesh_obj, area_id, cross_index, duplicate_keys)
 
 
 def _rebuild_edge_links_from_geometry(mesh_obj, area_id, loaded_area_ids=None, cross_index=None, duplicate_keys=None):
-    if not area_id:
+    if area_id is None:
         raise ValueError("Set AreaID before rebuilding edge links.")
     loaded_area_ids = set(loaded_area_ids or [])
     duplicate_keys = set(duplicate_keys or [])
@@ -2949,7 +3250,7 @@ def _read_collection_items(mesh_obj, source_navmesh=None):
         elif obj.get(YNV_POINT_TAG) or sollum_type == SOLLUMZ_NAVMESH_POINT:
             point_objects.append(obj)
 
-    for index, obj in enumerate(sorted(portal_objects, key=_object_sort_key)):
+    for index, obj in enumerate(sorted(portal_objects, key=_portal_object_sort_key)):
         source_portal = source_navmesh.portals[index] if source_navmesh and index < len(source_navmesh.portals) else None
         from_child = next((child for child in obj.children if child.name.lower().startswith("from")), None)
         to_child = next((child for child in obj.children if child.name.lower().startswith("to")), None)
@@ -3015,7 +3316,7 @@ def _portal_objects_for_mesh(mesh_obj):
             for obj in objects
             if obj.get(YNV_PORTAL_TAG) or _get_sollum_type(obj) == SOLLUMZ_NAVMESH_PORTAL
         ],
-        key=_object_sort_key,
+        key=_portal_object_sort_key,
     )
 
 
@@ -3232,8 +3533,8 @@ def _build_navmesh_for_export(mesh_obj, filepath):
         mesh_obj.parent["ynv_content_flags"] = content_flags
 
     warnings = []
-    if not area_id:
-        warnings.append("AreaID metadata is missing; AreaID was written as 0")
+    # AreaID 0 is a real CodeWalker tile.  Do not produce a false "missing"
+    # warning simply because it is numerically false.
     if source_navmesh:
         _store_source_navmesh_snapshot(mesh_obj, source_navmesh)
 
@@ -3272,7 +3573,13 @@ def _build_navmesh_for_export(mesh_obj, filepath):
 
     # A brand-new mesh has no edge data at all.  Auto-build only in that case;
     # an existing open source edge can be intentional and must stay open.
-    if auto_build_edges and area_id and not had_metadata and not seeded_from_source and _edges_are_all_open(polygon_edges):
+    if (
+        auto_build_edges
+        and area_id is not None
+        and not had_metadata
+        and not seeded_from_source
+        and _edges_are_all_open(polygon_edges)
+    ):
         _write_polygon_metadata(
             mesh_obj,
             polygon_flags,
@@ -3482,6 +3789,14 @@ class CWNavmeshSettings(bpy.types.PropertyGroup):
         description="Raw CodeWalker polygon flag bytes: Flags1, Flags2, Flags3, Flags4, UnkX, UnkY, optional Flags5.",
         default="0 0 0 0 0 0",
     )
+    apply_flag_bit_to_selected: bpy.props.BoolProperty(
+        name="Change named bit on selected faces",
+        description=(
+            "When enabled, changing a named B00–B32 checkbox changes only that bit on every selected face. "
+            "Each face keeps its other flags and raw UnkX/UnkY values."
+        ),
+        default=False,
+    )
     polygon_flags_1: bpy.props.IntProperty(
         name="Flags1",
         description="Raw CodeWalker Flags1 byte for the active polygon.",
@@ -3688,7 +4003,7 @@ class CWNAVMESH_OT_load_source_xml(bpy.types.Operator, ImportHelper):
             navmesh = read_navmesh_xml(self.filepath)
             settings = _scene_settings(context)
             settings.area_id = navmesh.area_id
-            settings.content_flags = navmesh.content_flags or DEFAULT_CONTENT_FLAGS
+            settings.content_flags = navmesh.content_flags
             settings.source_xml_path = self.filepath
             matched = _apply_source_navmesh_to_mesh(mesh_obj, self.filepath, navmesh)
         except Exception as exc:
@@ -3698,6 +4013,99 @@ class CWNAVMESH_OT_load_source_xml(bpy.types.Operator, ImportHelper):
             self.report({"INFO"}, "Loaded CW source XML metadata")
         else:
             self.report({"WARNING"}, "Loaded source identity; only exactly matching live faces received source metadata")
+        return {"FINISHED"}
+
+
+class CWNAVMESH_OT_load_neighbour_cells(bpy.types.Operator):
+    bl_idname = "cw_navmesh.load_neighbour_cells"
+    bl_label = "Load Neighbour Cells"
+    bl_description = (
+        "Loads existing CodeWalker neighbour YNV XML cells from the selected "
+        "navmesh source folder and skips cells already present in the scene"
+    )
+    bl_options = {"REGISTER", "UNDO"}
+
+    include_diagonals: bpy.props.BoolProperty(
+        name="Include diagonal cells",
+        description="Load all eight surrounding CodeWalker cells instead of only north, south, east and west",
+        default=True,
+    )
+
+    def execute(self, context):
+        try:
+            mesh_obj = _selected_navmesh_object(context)
+            if mesh_obj.mode == "EDIT":
+                raise ValueError("Switch the selected navmesh to Object Mode before loading neighbouring cells.")
+            source_path = _source_xml_for_neighbour_loading(mesh_obj, context)
+            area_id = _area_id_for_neighbour_loading(mesh_obj, source_path)
+            candidate_paths = list(
+                _codewalker_neighbour_source_paths(source_path, area_id, self.include_diagonals)
+            )
+        except Exception as exc:
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
+
+        loaded_area_ids = _loaded_navmesh_area_ids(context)
+        imported_count = 0
+        already_loaded_count = 0
+        missing_count = 0
+        mismatched_count = 0
+        unreadable_count = 0
+
+        # import_navmesh_xml selects the newly imported mesh.  Preserve the
+        # original active cell so a user can immediately rebuild cross-cell
+        # links or continue editing the same polygon after this operation.
+        try:
+            for expected_area_id, candidate_path in candidate_paths:
+                if expected_area_id in loaded_area_ids:
+                    already_loaded_count += 1
+                    continue
+                if not candidate_path.is_file():
+                    missing_count += 1
+                    continue
+                try:
+                    neighbour_navmesh = read_navmesh_xml(candidate_path)
+                except Exception:
+                    unreadable_count += 1
+                    continue
+                # A file with the right name but a different embedded AreaID
+                # is unsafe: importing it would make the scene look connected
+                # while cross-cell edge rebuilding targets the wrong cell.
+                if int(neighbour_navmesh.area_id) != expected_area_id:
+                    mismatched_count += 1
+                    continue
+                try:
+                    import_navmesh_xml(str(candidate_path), context)
+                except Exception:
+                    unreadable_count += 1
+                    continue
+                loaded_area_ids.add(expected_area_id)
+                imported_count += 1
+        finally:
+            # Do not leave the active object on the last imported neighbour.
+            # This is also safe when no source candidate existed.
+            try:
+                for obj in context.selected_objects:
+                    obj.select_set(False)
+                mesh_obj.select_set(True)
+                context.view_layer.objects.active = mesh_obj
+                _sync_settings_from_mesh(context, mesh_obj)
+            except (AttributeError, RuntimeError, TypeError):
+                pass
+
+        summary = []
+        if imported_count:
+            summary.append(f"loaded {imported_count}")
+        if already_loaded_count:
+            summary.append(f"skipped {already_loaded_count} already loaded")
+        if missing_count:
+            summary.append(f"{missing_count} file(s) absent")
+        if mismatched_count:
+            summary.append(f"skipped {mismatched_count} AreaID mismatch(es)")
+        if unreadable_count:
+            summary.append(f"skipped {unreadable_count} unreadable file(s)")
+        message = "Neighbour cells: " + ("; ".join(summary) if summary else "no adjacent cells were available")
+        self.report({"INFO"} if imported_count else {"WARNING"}, message)
         return {"FINISHED"}
 
 
@@ -3792,6 +4200,110 @@ class CWNAVMESH_OT_apply_flags_to_selected(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class CWNAVMESH_OT_select_matching_flags(bpy.types.Operator):
+    bl_idname = "cw_navmesh.select_matching_flags"
+    bl_label = "Select Matching Flags"
+    bl_description = "Selects every polygon whose complete raw CodeWalker flag bytes match the active face"
+    bl_options = {"REGISTER", "UNDO"}
+
+    extend: bpy.props.BoolProperty(
+        name="Extend Selection",
+        description="Keep the existing face selection instead of replacing it",
+        default=False,
+        options={"HIDDEN"},
+    )
+
+    def execute(self, context):
+        try:
+            mesh_obj = _selected_navmesh_object(context)
+            polygon_flags, _, _, _ = _ensure_polygon_metadata(mesh_obj)
+            active_index = _active_polygon_index(mesh_obj)
+            if active_index < 0 or active_index >= len(polygon_flags):
+                raise ValueError("Active polygon has no flag metadata.")
+            wanted_flags = list(polygon_flags[active_index])
+            matches = [index for index, flags in enumerate(polygon_flags) if list(flags) == wanted_flags]
+
+            if mesh_obj.mode == "EDIT":
+                import bmesh
+
+                bm = bmesh.from_edit_mesh(mesh_obj.data)
+                bm.faces.ensure_lookup_table()
+                if not self.extend:
+                    for face in bm.faces:
+                        face.select_set(False)
+                for index in matches:
+                    if index < len(bm.faces):
+                        bm.faces[index].select_set(True)
+                if active_index < len(bm.faces):
+                    bm.faces.active = bm.faces[active_index]
+                bmesh.update_edit_mesh(mesh_obj.data, loop_triangles=False, destructive=False)
+            else:
+                if not self.extend:
+                    for polygon in mesh_obj.data.polygons:
+                        polygon.select = False
+                for index in matches:
+                    if index < len(mesh_obj.data.polygons):
+                        mesh_obj.data.polygons[index].select = True
+                mesh_obj.data.update()
+        except Exception as exc:
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
+        self.report({"INFO"}, f"Selected {len(matches)} polygon(s) with matching flags")
+        return {"FINISHED"}
+
+
+class CWNAVMESH_OT_refresh_flag_colors(bpy.types.Operator):
+    bl_idname = "cw_navmesh.refresh_flag_colors"
+    bl_label = "Refresh Flag Colors"
+    bl_description = "Reassigns CodeWalker flag-colour materials to every polygon without changing YNV data"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        try:
+            mesh_obj = _selected_navmesh_object(context)
+            was_edit_mode = mesh_obj.mode == "EDIT"
+            if was_edit_mode:
+                bpy.ops.object.mode_set(mode="OBJECT")
+            try:
+                refreshed = _refresh_flag_materials(mesh_obj)
+            finally:
+                if was_edit_mode:
+                    bpy.ops.object.mode_set(mode="EDIT")
+        except Exception as exc:
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
+        self.report({"INFO"}, f"Refreshed flag colours for {refreshed} polygon(s)")
+        return {"FINISHED"}
+
+
+class CWNAVMESH_OT_show_flag_colors(bpy.types.Operator):
+    bl_idname = "cw_navmesh.show_flag_colors"
+    bl_label = "Show Flag Colors"
+    bl_description = "Refreshes CodeWalker flag colours and switches this 3D View to Material Preview"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def execute(self, context):
+        try:
+            mesh_obj = _selected_navmesh_object(context)
+            was_edit_mode = mesh_obj.mode == "EDIT"
+            if was_edit_mode:
+                bpy.ops.object.mode_set(mode="OBJECT")
+            try:
+                _refresh_flag_materials(mesh_obj)
+            finally:
+                if was_edit_mode:
+                    bpy.ops.object.mode_set(mode="EDIT")
+
+            shading = getattr(getattr(context, "space_data", None), "shading", None)
+            if shading is not None:
+                shading.type = "MATERIAL"
+        except Exception as exc:
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
+        self.report({"INFO"}, "Showing CodeWalker flag colours in Material Preview")
+        return {"FINISHED"}
+
+
 class CWNAVMESH_OT_copy_flags(bpy.types.Operator):
     bl_idname = "cw_navmesh.copy_flags"
     bl_label = "Copy Flags"
@@ -3850,18 +4362,11 @@ class CWNAVMESH_OT_build_edges(bpy.types.Operator):
     def execute(self, context):
         try:
             mesh_obj = _selected_navmesh_object(context)
-            area_id = _get_int_prop(mesh_obj, "ynv_area_id", 0)
-            if not area_id and mesh_obj.parent:
-                area_id = _get_int_prop(mesh_obj.parent, "ynv_area_id", 0)
-            if not area_id:
-                source_navmesh = _load_source_navmesh_for_export(mesh_obj, mesh_obj.name + ".ynv.xml")
-                if source_navmesh:
-                    area_id = source_navmesh.area_id
-                    mesh_obj["ynv_area_id"] = area_id
-                    if mesh_obj.parent:
-                        mesh_obj.parent["ynv_area_id"] = area_id
-            if not area_id:
-                raise ValueError("Set AreaID before building local edge links.")
+            source_navmesh = _load_source_navmesh_for_export(mesh_obj, mesh_obj.name + ".ynv.xml")
+            area_id = _navmesh_area_id(mesh_obj, source_navmesh)
+            mesh_obj["ynv_area_id"] = area_id
+            if mesh_obj.parent:
+                mesh_obj.parent["ynv_area_id"] = area_id
             linked, total, changed = _build_local_edge_links(mesh_obj, area_id)
             _ensure_polygon_metadata(mesh_obj)
         except Exception as exc:
@@ -3890,8 +4395,6 @@ class CWNAVMESH_OT_rebuild_edges_from_geometry(bpy.types.Operator):
                 mesh_obj.update_from_editmode()
             source_navmesh = _load_source_navmesh_for_export(mesh_obj, mesh_obj.name + ".ynv.xml")
             area_id = _navmesh_area_id(mesh_obj, source_navmesh)
-            if not area_id:
-                raise ValueError("Set AreaID before rebuilding edge links.")
 
             cross_index = None
             duplicate_keys = set()
@@ -3901,7 +4404,7 @@ class CWNAVMESH_OT_rebuild_edges_from_geometry(bpy.types.Operator):
                 for other_mesh in _scene_navmesh_meshes(context):
                     other_source = _load_source_navmesh_for_export(other_mesh, other_mesh.name + ".ynv.xml")
                     other_area = _navmesh_area_id(other_mesh, other_source)
-                    if other_area:
+                    if other_area is not None:
                         loaded_area_ids.add(other_area)
                     mesh_area_pairs.append((other_mesh, other_area))
                 cross_index, duplicate_keys = _build_cross_cell_index(mesh_area_pairs)
@@ -3939,7 +4442,7 @@ class CWNAVMESH_OT_create_navmesh(bpy.types.Operator):
         root = _new_empty("GTANAVMESH Edit Navmesh", "sollumz_navmesh")
         root[YNV_COLLECTION_TAG] = True
         root["ynv_area_id"] = int(settings.area_id)
-        root["ynv_content_flags"] = settings.content_flags.strip() or DEFAULT_CONTENT_FLAGS
+        root["ynv_content_flags"] = settings.content_flags.strip()
         _collection_link(context.collection, root)
         mesh = bpy.data.meshes.new("GTANAVMESH Edit Navmesh Mesh")
         mesh.from_pydata(
@@ -3955,7 +4458,7 @@ class CWNAVMESH_OT_create_navmesh(bpy.types.Operator):
         obj.select_set(True)
         obj[YNV_MESH_TAG] = True
         obj["ynv_area_id"] = int(settings.area_id)
-        obj["ynv_content_flags"] = settings.content_flags.strip() or DEFAULT_CONTENT_FLAGS
+        obj["ynv_content_flags"] = settings.content_flags.strip()
         _write_polygon_metadata(
             obj,
             [[0, 0, 0, 0, 0, 0]],
@@ -3971,6 +4474,318 @@ class CWNAVMESH_OT_create_navmesh(bpy.types.Operator):
         return {"FINISHED"}
 
 
+def _generated_navmesh_flags(preset):
+    """Return an explicit, conservative flag preset for generated surfaces."""
+    presets = {
+        # B17 FlatGround, B02 Footpath and B18 Road respectively.
+        "FLAT": [0, 0, 1, 0, 0, 0],
+        "FOOTPATH": [4, 0, 1, 0, 0, 0],
+        "ROAD": [0, 0, 3, 0, 0, 0],
+        "EMPTY": [0, 0, 0, 0, 0, 0],
+    }
+    return list(presets.get(preset, presets["FLAT"]))
+
+
+class CWNAVMESH_OT_generate_from_selected_mesh(bpy.types.Operator):
+    bl_idname = "cw_navmesh.generate_from_selected_mesh"
+    bl_label = "Generate Navmesh From Selected Mesh"
+    bl_description = (
+        "Creates a separate, CodeWalker-compatible YNV navmesh from the active mesh; "
+        "in Edit Mode only selected faces are used"
+    )
+    bl_options = {"REGISTER", "UNDO"}
+
+    max_slope_degrees: bpy.props.FloatProperty(
+        name="Max walkable slope",
+        description="Skip triangles steeper than this angle from world up",
+        default=45.0,
+        min=0.0,
+        max=89.9,
+    )
+    flag_preset: bpy.props.EnumProperty(
+        name="Surface flag preset",
+        description="Known GTA surface bits to put on newly generated polygons",
+        items=(
+            ("FLAT", "Flat Ground", "B17 FlatGround: general walkable ground"),
+            ("FOOTPATH", "Footpath", "B02 Footpath + B17 FlatGround"),
+            ("ROAD", "Road", "B18 Road + B17 FlatGround"),
+            ("EMPTY", "Empty / custom", "No known surface bits; edit the flags afterwards"),
+        ),
+        default="FLAT",
+    )
+    remove_exact_duplicate_faces: bpy.props.BoolProperty(
+        name="Remove exact duplicate faces",
+        description="Skip triangles with the same three generated vertices",
+        default=True,
+    )
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self, width=420)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.label(text="Creates a new navmesh; the selected source mesh is never changed.")
+        layout.prop(self, "max_slope_degrees")
+        layout.prop(self, "flag_preset")
+        layout.prop(self, "remove_exact_duplicate_faces")
+        layout.label(text="Edit Mode uses selected faces. Object Mode uses every face.")
+
+    def execute(self, context):
+        source_obj = getattr(context, "object", None)
+        if source_obj is None or source_obj.type != "MESH":
+            self.report({"ERROR"}, "Select a regular mesh or collision surface before generating a navmesh.")
+            return {"CANCELLED"}
+        if _is_navmesh_mesh(source_obj):
+            self.report({"ERROR"}, "The active object is already a navmesh. Edit it directly instead of generating a duplicate.")
+            return {"CANCELLED"}
+
+        source_mesh = source_obj.data
+        selected_polygon_indices = None
+        if source_obj.mode == "EDIT":
+            source_obj.update_from_editmode()
+            selected_polygon_indices = {polygon.index for polygon in source_mesh.polygons if polygon.select}
+            if not selected_polygon_indices:
+                self.report({"ERROR"}, "In Edit Mode, select one or more faces to generate a navmesh.")
+                return {"CANCELLED"}
+
+        source_mesh.calc_loop_triangles()
+        max_slope_radians = math.radians(float(self.max_slope_degrees))
+        vertices = []
+        faces = []
+        vertex_indices = {}
+        seen_faces = set()
+        input_triangles = 0
+        skipped_degenerate = 0
+        skipped_slope = 0
+        skipped_duplicate = 0
+
+        def generated_vertex_index(position):
+            key = (
+                round(float(position.x), EDGE_MATCH_PRECISION),
+                round(float(position.y), EDGE_MATCH_PRECISION),
+                round(float(position.z), EDGE_MATCH_PRECISION),
+            )
+            index = vertex_indices.get(key)
+            if index is None:
+                index = len(vertices)
+                vertex_indices[key] = index
+                vertices.append((float(position.x), float(position.y), float(position.z)))
+            return index
+
+        for triangle in source_mesh.loop_triangles:
+            if selected_polygon_indices is not None and triangle.polygon_index not in selected_polygon_indices:
+                continue
+            input_triangles += 1
+            coords = [source_obj.matrix_world @ source_mesh.vertices[index].co for index in triangle.vertices]
+            normal = (coords[1] - coords[0]).cross(coords[2] - coords[0])
+            if normal.length <= 0.000001:
+                skipped_degenerate += 1
+                continue
+            # YNV walk surfaces are authored upward.  Make the result
+            # deterministic even when the source collision's winding is down.
+            if normal.z < 0.0:
+                coords[1], coords[2] = coords[2], coords[1]
+                normal = -normal
+            normal.normalize()
+            normal_z = max(-1.0, min(1.0, float(normal.z)))
+            if math.acos(normal_z) > max_slope_radians:
+                skipped_slope += 1
+                continue
+
+            face = [generated_vertex_index(position) for position in coords]
+            face_key = tuple(sorted(face))
+            if self.remove_exact_duplicate_faces and face_key in seen_faces:
+                skipped_duplicate += 1
+                continue
+            seen_faces.add(face_key)
+            faces.append(face)
+
+        if not faces:
+            self.report(
+                {"ERROR"},
+                "No walkable triangles were generated. Raise Max walkable slope or select usable, non-degenerate faces.",
+            )
+            return {"CANCELLED"}
+
+        # Use world-space coordinates with an identity result transform.  It
+        # makes a converted collision mesh line up exactly and lets the normal
+        # edge builder compare its vertices without hidden parent transforms.
+        settings = _scene_settings(context)
+        area_id = int(settings.area_id)
+        content_flags = settings.content_flags.strip()
+        root = _new_empty(f"{source_obj.name} Generated Navmesh", "sollumz_navmesh")
+        root[YNV_COLLECTION_TAG] = True
+        root["ynv_area_id"] = area_id
+        root["ynv_content_flags"] = content_flags
+        _collection_link(context.collection, root)
+
+        generated_mesh = bpy.data.meshes.new(f"{source_obj.name} Navmesh Mesh")
+        generated_mesh.from_pydata(vertices, [], faces)
+        generated_mesh.update(calc_edges=True)
+        generated_obj = bpy.data.objects.new("NavMesh Poly Mesh", generated_mesh)
+        generated_obj.parent = root
+        _collection_link(context.collection, generated_obj)
+        generated_obj[YNV_MESH_TAG] = True
+        generated_obj["ynv_area_id"] = area_id
+        generated_obj["ynv_content_flags"] = content_flags
+        _set_sollum_type(generated_obj, SOLLUMZ_NAVMESH_POLY_MESH)
+
+        flags = _generated_navmesh_flags(self.flag_preset)
+        face_count = len(generated_mesh.polygons)
+        _write_polygon_metadata(
+            generated_obj,
+            [list(flags) for _ in range(face_count)],
+            [[DEFAULT_EDGE] * len(polygon.vertices) for polygon in generated_mesh.polygons],
+            [[DEFAULT_EDGE_FLAGS] * len(polygon.vertices) for polygon in generated_mesh.polygons],
+            [[] for _ in range(face_count)],
+            source_indices=[NO_SOURCE_POLYGON] * face_count,
+        )
+        _build_local_edge_links(generated_obj, area_id)
+        _refresh_flag_materials(generated_obj)
+        face_ids, _source_indices = _current_face_identity(generated_obj)
+        _store_reference_face_ids(generated_obj, face_ids)
+
+        edge_users = {}
+        for polygon in generated_mesh.polygons:
+            polygon_vertices = list(polygon.vertices)
+            for edge_index, start_index in enumerate(polygon_vertices):
+                end_index = polygon_vertices[(edge_index + 1) % len(polygon_vertices)]
+                edge_key = tuple(sorted((start_index, end_index)))
+                edge_users[edge_key] = edge_users.get(edge_key, 0) + 1
+        non_manifold_edges = sum(1 for users in edge_users.values() if users > 2)
+
+        for selected_obj in list(context.selected_objects):
+            selected_obj.select_set(False)
+        generated_obj.select_set(True)
+        context.view_layer.objects.active = generated_obj
+        _sync_settings_from_mesh(context, generated_obj)
+
+        compatibility_note = ""
+        try:
+            navmesh, _warnings, _face_ids, _filepath = _build_navmesh_for_export(
+                generated_obj,
+                generated_obj.name + ".ynv.xml",
+            )
+            validate_navmesh_for_codewalker(navmesh, strict=True)
+        except (NavMeshValidationError, ValueError) as exc:
+            compatibility_note = f"; validate before export: {str(exc)[:180]}"
+
+        skipped = skipped_degenerate + skipped_slope + skipped_duplicate
+        message = (
+            f"Generated {face_count} navmesh triangle(s) from {input_triangles}; "
+            f"skipped {skipped} (degenerate {skipped_degenerate}, steep {skipped_slope}, duplicate {skipped_duplicate})"
+        )
+        if non_manifold_edges:
+            message += f"; {non_manifold_edges} non-manifold edge(s) left open"
+        message += compatibility_note
+        self.report({"WARNING" if non_manifold_edges or compatibility_note else "INFO"}, message)
+        return {"FINISHED"}
+
+
+def _portal_faces_for_creation(mesh_obj):
+    """Pick valid portal polygon references from the active face/selection.
+
+    A portal always needs two valid polygon *positions* in the YNV file.  Use
+    the active face as ``PolyFrom`` whenever possible and the other selected
+    face as ``PolyTo``.  With only one usable face, a self-reference is still
+    a valid, explicit starting point that the user can edit instead of the old
+    silent hard-coded ``0 -> 0`` default.
+    """
+    polygon_count = len(mesh_obj.data.polygons)
+    if polygon_count <= 0:
+        raise ValueError("The selected navmesh has no polygons; add polygons before adding a portal.")
+
+    selected = []
+    for index in _selected_polygon_indices(mesh_obj):
+        if 0 <= index < polygon_count and index not in selected:
+            selected.append(index)
+
+    active = _active_polygon_index(mesh_obj)
+    if active < 0 or active >= polygon_count:
+        active = selected[0] if selected else 0
+
+    if active in selected:
+        poly_from = active
+        poly_to = next((index for index in selected if index != active), active)
+    elif selected:
+        poly_from = selected[0]
+        poly_to = selected[1] if len(selected) > 1 else poly_from
+    else:
+        poly_from = active
+        poly_to = active
+    return poly_from, poly_to
+
+
+def _next_portal_object_number():
+    """Allocate a globally unique, append-only display-name number."""
+    highest = -1
+    for obj in bpy.data.objects:
+        if not (obj.get(YNV_PORTAL_TAG) or _get_sollum_type(obj) == SOLLUMZ_NAVMESH_PORTAL):
+            continue
+        match = re.fullmatch(r"NavMesh Portal (\d+)", obj.name)
+        if match:
+            highest = max(highest, int(match.group(1)))
+    candidate = highest + 1
+    while bpy.data.objects.get(f"NavMesh Portal {candidate}") is not None:
+        candidate += 1
+    return candidate
+
+
+def _next_portal_order_for_mesh(mesh_obj):
+    """Freeze legacy portal order before appending a new local portal.
+
+    Earlier add-on versions had no explicit order field.  Preserve their
+    current order once, then give the new portal the next local YNV index.
+    """
+    portal_objects = _portal_objects_for_mesh(mesh_obj)
+    for index, obj in enumerate(portal_objects):
+        obj[YNV_PORTAL_ORDER] = index
+    return len(portal_objects)
+
+
+def _link_new_portal_to_polygons(mesh_obj, portal_obj, poly_from, poly_to):
+    """Persist reciprocal Polygon.Portals rows for a freshly created portal."""
+    polygon_flags, polygon_edges, polygon_edges_flags, polygon_portals = _ensure_polygon_metadata(mesh_obj)
+    portal_objects = _portal_objects_for_mesh(mesh_obj)
+    try:
+        portal_index = portal_objects.index(portal_obj)
+    except ValueError as exc:
+        raise RuntimeError("New portal is not under the selected navmesh root.") from exc
+
+    for polygon_index in {poly_from, poly_to}:
+        if not 0 <= polygon_index < len(polygon_portals):
+            raise ValueError(f"Portal polygon index {polygon_index} is outside the navmesh.")
+        if portal_index not in polygon_portals[polygon_index]:
+            polygon_portals[polygon_index].append(portal_index)
+
+    _write_polygon_metadata(mesh_obj, polygon_flags, polygon_edges, polygon_edges_flags, polygon_portals)
+    face_ids, _source_indices = _current_face_identity(mesh_obj)
+    portal_obj[YNV_PORTAL_REFERENCE_FACE_IDS] = json.dumps(face_ids, separators=(",", ":"))
+    return portal_index
+
+
+def _selected_navmesh_for_marker(context):
+    """Find the navmesh for the selected mesh, root, point or portal marker."""
+    try:
+        return _selected_navmesh_object(context)
+    except ValueError as original_error:
+        candidates = []
+        active = getattr(context, "object", None) or getattr(context, "active_object", None)
+        if active:
+            candidates.append(active)
+        candidates.extend(getattr(context, "selected_objects", []) or [])
+
+        seen = set()
+        for obj in candidates:
+            while obj and obj.name not in seen:
+                seen.add(obj.name)
+                mesh_obj = _find_navmesh_mesh_from_root(obj)
+                if mesh_obj:
+                    return mesh_obj
+                obj = obj.parent
+        raise original_error
+
+
 class CWNAVMESH_OT_add_point(bpy.types.Operator):
     bl_idname = "cw_navmesh.add_point"
     bl_label = "Add Point"
@@ -3979,10 +4794,14 @@ class CWNAVMESH_OT_add_point(bpy.types.Operator):
 
     def execute(self, context):
         try:
-            mesh_obj = _selected_navmesh_object(context)
-            parent = _child_empty(_navmesh_root(mesh_obj), "Points")
-        except Exception:
-            parent = None
+            mesh_obj = _selected_navmesh_for_marker(context)
+            root_obj = _navmesh_root(mesh_obj)
+            if root_obj is None:
+                raise ValueError("Selected navmesh has no GTANAVMESH Edit root; import or create the navmesh first.")
+            parent = _child_empty(root_obj, "Points")
+        except (AttributeError, TypeError, ValueError):
+            self.report({"ERROR"}, "Select an imported or newly created GTANAVMESH Edit navmesh before adding a point.")
+            return {"CANCELLED"}
         point = bpy.data.objects.new("NavMesh Point", _create_marker_mesh("GTANAVMESH Edit Point Marker"))
         point.location = context.scene.cursor.location
         point.parent = parent
@@ -4004,30 +4823,56 @@ class CWNAVMESH_OT_add_portal(bpy.types.Operator):
     bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
-        mesh_obj = None
         try:
-            mesh_obj = _selected_navmesh_object(context)
-            parent = _child_empty(_navmesh_root(mesh_obj), "Portals")
-        except Exception:
-            parent = None
+            mesh_obj = _selected_navmesh_for_marker(context)
+            root_obj = _navmesh_root(mesh_obj)
+            if root_obj is None:
+                raise ValueError("Selected navmesh has no GTANAVMESH Edit root; import or create the navmesh first.")
+            parent = _child_empty(root_obj, "Portals")
+            poly_from, poly_to = _portal_faces_for_creation(mesh_obj)
+        except (AttributeError, TypeError, ValueError):
+            self.report({"ERROR"}, "Select a navmesh with at least one polygon before adding a portal.")
+            return {"CANCELLED"}
+
         loc = context.scene.cursor.location
         portal_data = Portal(
-            type=0,
+            # Type 1 is a known GTA V portal type.  Users can still choose a
+            # different value in the Portal panel after creation.
+            type=1,
             angle=0.0,
-            poly_from=0,
-            poly_to=0,
+            poly_from=poly_from,
+            poly_to=poly_to,
             position_from=Vec3(loc.x - 0.5, loc.y, loc.z),
             position_to=Vec3(loc.x + 0.5, loc.y, loc.z),
         )
-        portal, from_obj, to_obj = _create_portal_object(portal_data, len([obj for obj in bpy.data.objects if obj.get(YNV_PORTAL_TAG)]))
-        portal.parent = parent
-        context.collection.objects.link(portal)
-        context.collection.objects.link(from_obj)
-        context.collection.objects.link(to_obj)
-        if mesh_obj:
-            face_ids, _source_indices = _current_face_identity(mesh_obj)
-            portal[YNV_PORTAL_REFERENCE_FACE_IDS] = json.dumps(face_ids, separators=(",", ":"))
-        self.report({"INFO"}, "Added GTANAVMESH Edit navmesh portal")
+        portal = from_obj = to_obj = None
+        try:
+            portal, from_obj, to_obj = _create_portal_object(
+                portal_data,
+                _next_portal_object_number(),
+                order=_next_portal_order_for_mesh(mesh_obj),
+            )
+            portal.parent = parent
+            context.collection.objects.link(portal)
+            context.collection.objects.link(from_obj)
+            context.collection.objects.link(to_obj)
+            portal_index = _link_new_portal_to_polygons(mesh_obj, portal, poly_from, poly_to)
+        except Exception as exc:
+            # Never leave an unlinked portal marker behind if creation fails at
+            # any point after the parent/metadata checks above.
+            for obj in (from_obj, to_obj, portal):
+                if obj is not None and obj.name in bpy.data.objects:
+                    bpy.data.objects.remove(obj, do_unlink=True)
+            self.report({"ERROR"}, f"Cannot add portal: {exc}")
+            return {"CANCELLED"}
+
+        if poly_from == poly_to:
+            self.report(
+                {"WARNING"},
+                f"Added portal {portal_index} on polygon {poly_from}; select two faces before adding to set both ends automatically.",
+            )
+        else:
+            self.report({"INFO"}, f"Added portal {portal_index}: PolyFrom {poly_from} → PolyTo {poly_to}")
         return {"FINISHED"}
 
 
@@ -4219,8 +5064,6 @@ class CWNAVMESH_OT_export_all_ynv_xml(bpy.types.Operator):
                 probe_path = directory / _ynv_xml_path(probe_name)
                 source_path, source_navmesh = _attach_source_xml_if_missing(mesh_obj, probe_path)
                 area_id = _navmesh_area_id(mesh_obj, source_navmesh)
-                if not area_id:
-                    warnings.append(f"{mesh_obj.name}: missing AreaID")
                 mesh_obj["ynv_area_id"] = area_id
                 if mesh_obj.parent:
                     mesh_obj.parent["ynv_area_id"] = area_id
@@ -4232,7 +5075,7 @@ class CWNAVMESH_OT_export_all_ynv_xml(bpy.types.Operator):
                     root_name = mesh_obj.parent.name if mesh_obj.parent else mesh_obj.name
                     filename = Path(_ynv_xml_path(root_name)).name
                 if filename in used_names:
-                    suffix = f"_{area_id}" if area_id else f"_{len(used_names)}"
+                    suffix = f"_{area_id}" if area_id is not None else f"_{len(used_names)}"
                     stem = filename[:-8] if filename.lower().endswith(".ynv.xml") else Path(filename).stem
                     filename = f"{stem}{suffix}.ynv.xml"
                     warnings.append(f"{mesh_obj.name}: duplicate export name, wrote {filename}")
@@ -4241,7 +5084,7 @@ class CWNAVMESH_OT_export_all_ynv_xml(bpy.types.Operator):
 
             area_counts = {}
             for _mesh_obj, area_id in mesh_area_pairs:
-                if area_id:
+                if area_id is not None:
                     area_counts[area_id] = area_counts.get(area_id, 0) + 1
             duplicate_areas = [area_id for area_id, count in area_counts.items() if count > 1]
             if duplicate_areas:
@@ -4251,7 +5094,7 @@ class CWNAVMESH_OT_export_all_ynv_xml(bpy.types.Operator):
             cross_changed = 0
             cross_matched = 0
             for mesh_obj, area_id in mesh_area_pairs:
-                if not area_id:
+                if area_id is None:
                     continue
                 polygon_flags, polygon_edges, polygon_edges_flags, polygon_portals = _read_polygon_metadata(mesh_obj)
                 face_ids, source_indices = _current_face_identity(mesh_obj)
@@ -4318,7 +5161,7 @@ class CWNAVMESH_PT_panel(bpy.types.Panel):
         active = getattr(context, "object", None)
         mesh_obj = None
         try:
-            mesh_obj = _selected_navmesh_object(context)
+            mesh_obj = _selected_navmesh_for_marker(context)
         except Exception:
             pass
 
@@ -4347,8 +5190,17 @@ class CWNAVMESH_PT_panel(bpy.types.Panel):
         row.operator(IMPORT_OT_ynv_xml.bl_idname, text="Import XML")
         row.operator(CWNAVMESH_OT_create_navmesh.bl_idname, text="New")
 
+        layout.operator(
+            CWNAVMESH_OT_generate_from_selected_mesh.bl_idname,
+            text="Generate Navmesh From Selected Mesh",
+            icon="MOD_TRIANGULATE",
+        )
+
         row = layout.row(align=True)
         row.operator(CWNAVMESH_OT_load_source_xml.bl_idname, text="Load Source")
+        row.operator(CWNAVMESH_OT_load_neighbour_cells.bl_idname, text="Load Neighbours")
+
+        row = layout.row(align=True)
         row.operator(CWNAVMESH_OT_fix_sources.bl_idname, text="Fix Sources")
 
         row = layout.row(align=True)
@@ -4365,9 +5217,18 @@ class CWNAVMESH_PT_panel(bpy.types.Panel):
         row.operator(CWNAVMESH_OT_build_edges.bl_idname, text="Build Edges")
         row.operator(CWNAVMESH_OT_rebuild_edges_from_geometry.bl_idname, text="Rebuild Edges")
 
+        has_navmesh_root = bool(mesh_obj and _navmesh_root(mesh_obj))
         row = layout.row(align=True)
-        row.operator(CWNAVMESH_OT_add_point.bl_idname, text="Add Point")
-        row.operator(CWNAVMESH_OT_add_portal.bl_idname, text="Add Portal")
+        point_row = row.row(align=True)
+        point_row.enabled = has_navmesh_root
+        point_row.operator(CWNAVMESH_OT_add_point.bl_idname, text="Add Point")
+        portal_row = row.row(align=True)
+        portal_row.enabled = bool(has_navmesh_root and len(mesh_obj.data.polygons) > 0)
+        portal_row.operator(CWNAVMESH_OT_add_portal.bl_idname, text="Add Portal")
+        if has_navmesh_root:
+            layout.label(text="Portal: active face = From; another selected face = To.")
+        else:
+            layout.label(text="Select an imported or newly created navmesh to add points or portals.")
 
         if mesh_obj:
             mesh_source = str(mesh_obj.get("ynv_source_xml", mesh_obj.parent.get("ynv_source_xml", "") if mesh_obj.parent else "")).strip()
@@ -4396,6 +5257,14 @@ class CWNAVMESH_PT_panel(bpy.types.Panel):
             row.operator(CWNAVMESH_OT_apply_polygon.bl_idname, text="Apply")
             row = poly.row(align=True)
             row.operator(CWNAVMESH_OT_apply_flags_to_selected.bl_idname, text="Apply Flags to Selected")
+            row.operator(CWNAVMESH_OT_select_matching_flags.bl_idname, text="Select Matching")
+            row = poly.row(align=True)
+            row.operator(CWNAVMESH_OT_show_flag_colors.bl_idname, text="Show Flag Colors", icon="MATERIAL")
+            row.operator(CWNAVMESH_OT_refresh_flag_colors.bl_idname, text="Refresh Colors", icon="FILE_REFRESH")
+            color_box = poly.box()
+            color_box.label(text="CodeWalker Flag Colors (Material Preview)")
+            color_box.label(text="Green: footpath / flat / track   Blue: water / interior / shallow")
+            color_box.label(text="Red: avoid / steep / footpath variants   Alpha: 0.75")
             row = poly.row(align=True)
             row.operator(CWNAVMESH_OT_copy_flags.bl_idname, text="Copy Flags")
             row.operator(CWNAVMESH_OT_paste_flags.bl_idname, text="Paste Flags")
@@ -4413,11 +5282,17 @@ class CWNAVMESH_PT_panel(bpy.types.Panel):
                     row.prop(settings, attr_name)
             raw_values_box.label(text="UnkX/UnkY are raw bytes; Flags5 stores B16 only.")
             flags_box = poly.box()
-            flags_box.label(text="Known GTA V Flag Bits (active face)")
-            for index in range(0, len(POLYGON_FLAG_BITS), 2):
-                row = flags_box.row(align=True)
-                for attr_name, _label, _bit in POLYGON_FLAG_BITS[index:index + 2]:
-                    row.prop(settings, attr_name)
+            flags_box.label(text="All 33 Known GTA V Flag Bits (active face)")
+            flags_box.prop(settings, "apply_flag_bit_to_selected", icon="BRUSH_DATA")
+            if settings.apply_flag_bit_to_selected:
+                flags_box.label(text="Checkboxes paint one bit across selected faces; other bits stay intact.")
+            for group_label, group_bits in POLYGON_FLAG_GROUPS:
+                group_box = flags_box.box()
+                group_box.label(text=group_label)
+                for index in range(0, len(group_bits), 2):
+                    row = group_box.row(align=True)
+                    for attr_name, _label, _bit in group_bits[index:index + 2]:
+                        row.prop(settings, attr_name)
             flags_box.label(text=f"Bitfield: {_polygon_flag_bits(current_flags)}")
             poly.prop(settings, "polygon_edges", text="Edges (advanced)")
             edge_flags_box = poly.box()
@@ -4479,15 +5354,20 @@ classes = (
     CWNAVMESH_OT_apply_settings,
     IMPORT_OT_ynv_xml,
     CWNAVMESH_OT_load_source_xml,
+    CWNAVMESH_OT_load_neighbour_cells,
     CWNAVMESH_OT_fix_sources,
     CWNAVMESH_OT_pick_polygon,
     CWNAVMESH_OT_apply_polygon,
     CWNAVMESH_OT_apply_flags_to_selected,
+    CWNAVMESH_OT_select_matching_flags,
+    CWNAVMESH_OT_refresh_flag_colors,
+    CWNAVMESH_OT_show_flag_colors,
     CWNAVMESH_OT_copy_flags,
     CWNAVMESH_OT_paste_flags,
     CWNAVMESH_OT_build_edges,
     CWNAVMESH_OT_rebuild_edges_from_geometry,
     CWNAVMESH_OT_create_navmesh,
+    CWNAVMESH_OT_generate_from_selected_mesh,
     CWNAVMESH_OT_add_point,
     CWNAVMESH_OT_add_portal,
     CWNAVMESH_OT_validate,

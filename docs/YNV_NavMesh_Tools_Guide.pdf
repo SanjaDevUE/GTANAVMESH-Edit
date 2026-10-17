@@ -10,259 +10,311 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Courier >>
 endobj
 4 0 obj
-<< /Length 3875 >>
+<< /Length 3876 >>
 stream
 BT /F1 8 Tf 54 28 Td (GTANAVMESH Edit - User Guide) Tj ET
 BT /F3 8 Tf 485 28 Td (Page 1) Tj ET
 BT /F2 18 Tf 54 790 Td (GTANAVMESH Edit - User Guide) Tj ET
-BT /F1 10 Tf 54 759 Td (Version: v0.11.1) Tj ET
+BT /F1 10 Tf 54 759 Td (Version: v0.12.0) Tj ET
 BT /F1 10 Tf 54 745 Td (Copyright \(c\) 2026 devsanja) Tj ET
 BT /F2 15 Tf 54 720 Td (1. Purpose) Tj ET
 BT /F1 10 Tf 54 693 Td (GTANAVMESH Edit is a Blender addon for importing, editing and exporting GTA) Tj ET
 BT /F1 10 Tf 54 679 Td (V YNV navmesh XML files in a CodeWalker-compatible format. It can import XML) Tj ET
 BT /F1 10 Tf 54 665 Td (directly or work with a navmesh imported through Sollumz.) Tj ET
-BT /F1 10 Tf 54 646 Td (The addon is designed to stay a pure Blender addon. CodeWalker and Sollumz) Tj ET
-BT /F1 10 Tf 54 632 Td (reference behavior was used for compatibility decisions, but the addon does) Tj ET
-BT /F1 10 Tf 54 618 Td (not require CodeWalker at runtime.) Tj ET
-BT /F1 10 Tf 54 599 Td (> Unofficial community tool. GTANAVMESH Edit is not affiliated with, endorsed) Tj ET
-BT /F1 10 Tf 54 585 Td (> by, or associated with Rockstar Games or Take-Two Interactive.) Tj ET
-BT /F2 12 Tf 54 563 Td (Requirements and external tools) Tj ET
-BT /F1 10 Tf 54 540 Td (Blender 2.80+ is required. Sollumz is optional and must be installed) Tj ET
-BT /F1 10 Tf 54 526 Td (separately if its importer or property panels are needed. CodeWalker is) Tj ET
-BT /F1 10 Tf 54 512 Td (optional but recommended for inspection and the target workflow. Building the) Tj ET
-BT /F1 10 Tf 54 498 Td (optional ynv_compiler requires the .NET 8 SDK and a compatible local) Tj ET
-BT /F1 10 Tf 54 484 Td (CodeWalker.Core project.) Tj ET
-BT /F1 10 Tf 54 465 Td (The release ZIP contains only GTANAVMESH Edit; it does not package Sollumz,) Tj ET
-BT /F1 10 Tf 54 451 Td (CodeWalker, CodeWalker.Core, GTA V files or other third-party assets.) Tj ET
-BT /F1 10 Tf 54 432 Td (Main goals:) Tj ET
-BT /F1 10 Tf 54 413 Td (-) Tj ET
-BT /F1 10 Tf 70 413 Td (Import CodeWalker .ynv.xml navmesh files directly, and retain compatibility) Tj ET
-BT /F1 10 Tf 54 399 Td (with Sollumz-imported navmeshes.) Tj ET
-BT /F1 10 Tf 54 385 Td (-) Tj ET
-BT /F1 10 Tf 70 385 Td (Preserve important original metadata such as AreaID, ContentFlags, points,) Tj ET
-BT /F1 10 Tf 70 371 Td (portals, polygon flags, edge flags and edge links.) Tj ET
-BT /F1 10 Tf 54 357 Td (-) Tj ET
-BT /F1 10 Tf 70 357 Td (Allow face-level flag editing inside Blender.) Tj ET
-BT /F1 10 Tf 54 343 Td (-) Tj ET
-BT /F1 10 Tf 70 343 Td (Export one selected navmesh or all loaded navmeshes back to .ynv.xml.) Tj ET
-BT /F1 10 Tf 54 329 Td (-) Tj ET
-BT /F1 10 Tf 70 329 Td (Support geometry-based edge rebuilds for edited navmeshes.) Tj ET
-BT /F1 10 Tf 54 315 Td (-) Tj ET
-BT /F1 10 Tf 70 315 Td (Create a starter navmesh cell for new work.) Tj ET
-BT /F1 10 Tf 54 301 Td (-) Tj ET
-BT /F1 10 Tf 70 301 Td (Optionally compile a validated XML export to native RSC7 .ynv with a) Tj ET
-BT /F1 10 Tf 54 287 Td (user-configured local compiler.) Tj ET
-BT /F2 15 Tf 54 262 Td (2. Important Concepts) Tj ET
-BT /F2 12 Tf 54 232 Td (Navmesh Cell) Tj ET
-BT /F1 10 Tf 54 209 Td (A YNV file usually represents one navmesh cell. The file name often looks like) Tj ET
-BT /F1 10 Tf 54 195 Td (navmesh[123][99].ynv.xml.) Tj ET
-BT /F1 10 Tf 54 176 Td (Each cell has its own:) Tj ET
-BT /F1 10 Tf 54 157 Td (-) Tj ET
-BT /F1 10 Tf 70 157 Td (AreaID) Tj ET
-BT /F1 10 Tf 54 143 Td (-) Tj ET
-BT /F1 10 Tf 70 143 Td (ContentFlags) Tj ET
-BT /F1 10 Tf 54 129 Td (-) Tj ET
-BT /F1 10 Tf 70 129 Td (bounding box \(BBMin, BBMax, BBSize\)) Tj ET
-BT /F1 10 Tf 54 115 Td (-) Tj ET
-BT /F1 10 Tf 70 115 Td (polygons) Tj ET
-BT /F1 10 Tf 54 101 Td (-) Tj ET
-BT /F1 10 Tf 70 101 Td (points) Tj ET
-BT /F1 10 Tf 54 87 Td (-) Tj ET
-BT /F1 10 Tf 70 87 Td (portals) Tj ET
-BT /F1 10 Tf 54 73 Td (-) Tj ET
-BT /F1 10 Tf 70 73 Td (edge links to internal polygons and external neighbor cells) Tj ET
+BT /F1 10 Tf 54 646 Td (The direct input format is .ynv.xml, not a native binary .ynv. A native) Tj ET
+BT /F1 10 Tf 54 632 Td (.ynv can be produced only by the separately configured local compiler after) Tj ET
+BT /F1 10 Tf 54 618 Td (XML validation; GTANAVMESH Edit does not decode/import native .ynv files.) Tj ET
+BT /F1 10 Tf 54 599 Td (The addon is designed to stay a pure Blender addon. CodeWalker and Sollumz) Tj ET
+BT /F1 10 Tf 54 585 Td (reference behavior was used for compatibility decisions, but the addon does) Tj ET
+BT /F1 10 Tf 54 571 Td (not require CodeWalker at runtime.) Tj ET
+BT /F1 10 Tf 54 552 Td (> Unofficial community tool. GTANAVMESH Edit is not affiliated with, endorsed) Tj ET
+BT /F1 10 Tf 54 538 Td (> by, or associated with Rockstar Games or Take-Two Interactive.) Tj ET
+BT /F2 12 Tf 54 516 Td (Requirements and external tools) Tj ET
+BT /F1 10 Tf 54 493 Td (Blender 2.80+ is required. Sollumz is optional and must be installed) Tj ET
+BT /F1 10 Tf 54 479 Td (separately if its importer or property panels are needed. CodeWalker is) Tj ET
+BT /F1 10 Tf 54 465 Td (optional but recommended for inspection and the target workflow. Building the) Tj ET
+BT /F1 10 Tf 54 451 Td (optional ynv_compiler requires the .NET 8 SDK and a compatible local) Tj ET
+BT /F1 10 Tf 54 437 Td (CodeWalker.Core project.) Tj ET
+BT /F1 10 Tf 54 418 Td (The release ZIP contains only GTANAVMESH Edit; it does not package Sollumz,) Tj ET
+BT /F1 10 Tf 54 404 Td (CodeWalker, CodeWalker.Core, GTA V files or other third-party assets.) Tj ET
+BT /F1 10 Tf 54 385 Td (Main goals:) Tj ET
+BT /F1 10 Tf 54 366 Td (-) Tj ET
+BT /F1 10 Tf 70 366 Td (Import CodeWalker .ynv.xml navmesh files directly, and retain compatibility) Tj ET
+BT /F1 10 Tf 54 352 Td (with Sollumz-imported navmeshes.) Tj ET
+BT /F1 10 Tf 54 338 Td (-) Tj ET
+BT /F1 10 Tf 70 338 Td (Preserve important original metadata such as AreaID, ContentFlags, points,) Tj ET
+BT /F1 10 Tf 70 324 Td (portals, polygon flags, edge flags and edge links.) Tj ET
+BT /F1 10 Tf 54 310 Td (-) Tj ET
+BT /F1 10 Tf 70 310 Td (Allow face-level flag editing inside Blender.) Tj ET
+BT /F1 10 Tf 54 296 Td (-) Tj ET
+BT /F1 10 Tf 70 296 Td (Export one selected navmesh or all loaded navmeshes back to .ynv.xml.) Tj ET
+BT /F1 10 Tf 54 282 Td (-) Tj ET
+BT /F1 10 Tf 70 282 Td (Support geometry-based edge rebuilds for edited navmeshes.) Tj ET
+BT /F1 10 Tf 54 268 Td (-) Tj ET
+BT /F1 10 Tf 70 268 Td (Load the source cells around a bound navmesh without broad file-system) Tj ET
+BT /F1 10 Tf 54 254 Td (guessing.) Tj ET
+BT /F1 10 Tf 54 240 Td (-) Tj ET
+BT /F1 10 Tf 70 240 Td (Create a starter cell or generate a reviewable starter navmesh from selected) Tj ET
+BT /F1 10 Tf 54 226 Td (collision/regular mesh geometry.) Tj ET
+BT /F1 10 Tf 54 212 Td (-) Tj ET
+BT /F1 10 Tf 70 212 Td (Optionally compile a validated XML export to native RSC7 .ynv with a) Tj ET
+BT /F1 10 Tf 54 198 Td (user-configured local compiler.) Tj ET
+BT /F2 15 Tf 54 173 Td (2. Important Concepts) Tj ET
+BT /F2 12 Tf 54 143 Td (Navmesh Cell) Tj ET
+BT /F1 10 Tf 54 120 Td (A YNV file usually represents one navmesh cell. The file name often looks like) Tj ET
+BT /F1 10 Tf 54 106 Td (navmesh[123][99].ynv.xml.) Tj ET
+BT /F1 10 Tf 54 87 Td (Each cell has its own:) Tj ET
 endstream
 endobj
 5 0 obj
-<< /Type /Page /Parent 22 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 4 0 R >>
+<< /Type /Page /Parent 28 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 4 0 R >>
 endobj
 6 0 obj
-<< /Length 3731 >>
+<< /Length 4120 >>
 stream
 BT /F1 8 Tf 54 28 Td (GTANAVMESH Edit - User Guide) Tj ET
 BT /F3 8 Tf 485 28 Td (Page 2) Tj ET
-BT /F2 12 Tf 54 787 Td (AreaID) Tj ET
-BT /F1 10 Tf 54 764 Td (AreaID is the numeric cell identifier used inside edge links. It must stay correct) Tj ET
-BT /F1 10 Tf 54 750 Td (when replacing an existing game navmesh.) Tj ET
-BT /F1 10 Tf 54 731 Td (If the AreaID is wrong, edge links can point to the wrong cell or become invalid.) Tj ET
-BT /F2 12 Tf 54 709 Td (Source XML) Tj ET
-BT /F1 10 Tf 54 686 Td (The Source XML is the original .ynv.xml file that belongs to the imported navmesh.) Tj ET
-BT /F1 10 Tf 54 667 Td (It is important because it allows the addon to preserve data that is difficult to) Tj ET
-BT /F1 10 Tf 54 653 Td (reconstruct perfectly from Blender geometry alone:) Tj ET
-BT /F1 10 Tf 54 634 Td (-) Tj ET
-BT /F1 10 Tf 70 634 Td (original edge links) Tj ET
-BT /F1 10 Tf 54 620 Td (-) Tj ET
-BT /F1 10 Tf 70 620 Td (edge flags) Tj ET
-BT /F1 10 Tf 54 606 Td (-) Tj ET
-BT /F1 10 Tf 70 606 Td (polygon flags) Tj ET
-BT /F1 10 Tf 54 592 Td (-) Tj ET
-BT /F1 10 Tf 70 592 Td (portal references) Tj ET
-BT /F1 10 Tf 54 578 Td (-) Tj ET
-BT /F1 10 Tf 70 578 Td (points) Tj ET
-BT /F1 10 Tf 54 564 Td (-) Tj ET
-BT /F1 10 Tf 70 564 Td (bounds) Tj ET
-BT /F1 10 Tf 54 550 Td (-) Tj ET
-BT /F1 10 Tf 70 550 Td (AreaID) Tj ET
-BT /F1 10 Tf 54 536 Td (-) Tj ET
-BT /F1 10 Tf 70 536 Td (ContentFlags) Tj ET
-BT /F1 10 Tf 54 517 Td (Face metadata is stored by stable Blender face ID rather than by a transient) Tj ET
-BT /F1 10 Tf 54 503 Td (polygon position. Reordering faces keeps matching metadata aligned; deleting a) Tj ET
-BT /F1 10 Tf 54 489 Td (face removes it from the output instead of restoring it from the source XML.) Tj ET
-BT /F1 10 Tf 54 470 Td (Manual source selection is the safe default. Select the navmesh, use the Load) Tj ET
-BT /F1 10 Tf 54 456 Td (Source button, and choose the exact original XML. Fix Sources is only an) Tj ET
-BT /F1 10 Tf 54 442 Td (opt-in recovery aid for a moved .blend: enable Auto Find Source and) Tj ET
-BT /F1 10 Tf 54 428 Td (optionally set a narrow Source Search Folder. An unnamed automatic match) Tj ET
-BT /F1 10 Tf 54 414 Td (requires equal polygon count, near-identical bounds and exactly one candidate.) Tj ET
-BT /F1 10 Tf 54 400 Td (It cannot prove that similarly named cells are interchangeable. Always confirm) Tj ET
-BT /F1 10 Tf 54 386 Td (the selected path, AreaID, polygon count and portal count before you edit or) Tj ET
-BT /F1 10 Tf 54 372 Td (export.) Tj ET
-BT /F2 12 Tf 54 350 Td (Polygon Flags) Tj ET
-BT /F1 10 Tf 54 327 Td (Each polygon has CodeWalker-style integer flags. The addon exposes these both as raw) Tj ET
-BT /F1 10 Tf 54 313 Td (flag integers and as bit checkboxes.) Tj ET
-BT /F1 10 Tf 54 294 Td (Examples of known bits:) Tj ET
-BT /F1 10 Tf 54 275 Td (-) Tj ET
-BT /F1 10 Tf 70 275 Td (Footpath) Tj ET
-BT /F1 10 Tf 54 261 Td (-) Tj ET
-BT /F1 10 Tf 70 261 Td (Road) Tj ET
-BT /F1 10 Tf 54 247 Td (-) Tj ET
-BT /F1 10 Tf 70 247 Td (CellEdge) Tj ET
-BT /F1 10 Tf 54 233 Td (-) Tj ET
-BT /F1 10 Tf 70 233 Td (FlatGround) Tj ET
-BT /F1 10 Tf 54 219 Td (-) Tj ET
-BT /F1 10 Tf 70 219 Td (TrainTrack) Tj ET
-BT /F1 10 Tf 54 205 Td (-) Tj ET
-BT /F1 10 Tf 70 205 Td (ShallowWater) Tj ET
-BT /F1 10 Tf 54 191 Td (-) Tj ET
-BT /F1 10 Tf 70 191 Td (slope direction bits) Tj ET
-BT /F1 10 Tf 54 172 Td (Material colors are derived from the Sollumz-style flag interpretation so navmesh) Tj ET
-BT /F1 10 Tf 54 158 Td (surfaces can be visually inspected in Blender.) Tj ET
-BT /F2 12 Tf 54 136 Td (Edge Links) Tj ET
-BT /F1 10 Tf 54 113 Td (Each polygon edge has a link row such as:) Tj ET
-BT /F1 10 Tf 54 94 Td (4038:5, 4038:5) Tj ET
-BT /F1 10 Tf 54 75 Td (This points to polygon 5 in area 4038.) Tj ET
+BT /F1 10 Tf 54 790 Td (-) Tj ET
+BT /F1 10 Tf 70 790 Td (AreaID) Tj ET
+BT /F1 10 Tf 54 776 Td (-) Tj ET
+BT /F1 10 Tf 70 776 Td (ContentFlags) Tj ET
+BT /F1 10 Tf 54 762 Td (-) Tj ET
+BT /F1 10 Tf 70 762 Td (bounding box \(BBMin, BBMax, BBSize\)) Tj ET
+BT /F1 10 Tf 54 748 Td (-) Tj ET
+BT /F1 10 Tf 70 748 Td (polygons) Tj ET
+BT /F1 10 Tf 54 734 Td (-) Tj ET
+BT /F1 10 Tf 70 734 Td (points) Tj ET
+BT /F1 10 Tf 54 720 Td (-) Tj ET
+BT /F1 10 Tf 70 720 Td (portals) Tj ET
+BT /F1 10 Tf 54 706 Td (-) Tj ET
+BT /F1 10 Tf 70 706 Td (edge links to internal polygons and external neighbor cells) Tj ET
+BT /F2 12 Tf 54 684 Td (AreaID) Tj ET
+BT /F1 10 Tf 54 661 Td (AreaID is the numeric cell identifier used inside edge links. It must stay correct) Tj ET
+BT /F1 10 Tf 54 647 Td (when replacing an existing game navmesh.) Tj ET
+BT /F1 10 Tf 54 628 Td (If the AreaID is wrong, edge links can point to the wrong cell or become invalid.) Tj ET
+BT /F1 10 Tf 54 609 Td (The valid range is 0-16382. AreaID 0 is valid and must not be) Tj ET
+BT /F1 10 Tf 54 595 Td (treated as an empty/missing value; 16383 is reserved as the open-edge) Tj ET
+BT /F1 10 Tf 54 581 Td (sentinel. An imported source with AreaID 0 is therefore authoritative just) Tj ET
+BT /F1 10 Tf 54 567 Td (like any other imported cell.) Tj ET
+BT /F2 12 Tf 54 545 Td (Source XML) Tj ET
+BT /F1 10 Tf 54 522 Td (The Source XML is the original .ynv.xml file that belongs to the imported navmesh.) Tj ET
+BT /F1 10 Tf 54 503 Td (It is important because it allows the addon to preserve data that is difficult to) Tj ET
+BT /F1 10 Tf 54 489 Td (reconstruct perfectly from Blender geometry alone:) Tj ET
+BT /F1 10 Tf 54 470 Td (-) Tj ET
+BT /F1 10 Tf 70 470 Td (original edge links) Tj ET
+BT /F1 10 Tf 54 456 Td (-) Tj ET
+BT /F1 10 Tf 70 456 Td (edge flags) Tj ET
+BT /F1 10 Tf 54 442 Td (-) Tj ET
+BT /F1 10 Tf 70 442 Td (polygon flags) Tj ET
+BT /F1 10 Tf 54 428 Td (-) Tj ET
+BT /F1 10 Tf 70 428 Td (portal references) Tj ET
+BT /F1 10 Tf 54 414 Td (-) Tj ET
+BT /F1 10 Tf 70 414 Td (points) Tj ET
+BT /F1 10 Tf 54 400 Td (-) Tj ET
+BT /F1 10 Tf 70 400 Td (bounds) Tj ET
+BT /F1 10 Tf 54 386 Td (-) Tj ET
+BT /F1 10 Tf 70 386 Td (AreaID) Tj ET
+BT /F1 10 Tf 54 372 Td (-) Tj ET
+BT /F1 10 Tf 70 372 Td (ContentFlags) Tj ET
+BT /F1 10 Tf 54 353 Td (Face metadata is stored by stable Blender face ID rather than by a transient) Tj ET
+BT /F1 10 Tf 54 339 Td (polygon position. Reordering faces keeps matching metadata aligned; deleting a) Tj ET
+BT /F1 10 Tf 54 325 Td (face removes it from the output instead of restoring it from the source XML.) Tj ET
+BT /F1 10 Tf 54 306 Td (Manual source selection is the safe default. Select the navmesh, use the Load) Tj ET
+BT /F1 10 Tf 54 292 Td (Source button, and choose the exact original XML. Fix Sources is only an) Tj ET
+BT /F1 10 Tf 54 278 Td (opt-in recovery aid for a moved .blend: enable Auto Find Source and) Tj ET
+BT /F1 10 Tf 54 264 Td (optionally set a narrow Source Search Folder. An unnamed automatic match) Tj ET
+BT /F1 10 Tf 54 250 Td (requires equal polygon count, near-identical bounds and exactly one candidate.) Tj ET
+BT /F1 10 Tf 54 236 Td (It cannot prove that similarly named cells are interchangeable. Always confirm) Tj ET
+BT /F1 10 Tf 54 222 Td (the selected path, AreaID, polygon count and portal count before you edit or) Tj ET
+BT /F1 10 Tf 54 208 Td (export.) Tj ET
+BT /F2 12 Tf 54 186 Td (Polygon Flags) Tj ET
+BT /F1 10 Tf 54 163 Td (Each polygon has CodeWalker-style packed flag bytes. The add-on exposes the) Tj ET
+BT /F1 10 Tf 54 149 Td (raw values, individual numeric fields, and all 33 known bits as grouped) Tj ET
+BT /F1 10 Tf 54 135 Td (checkboxes. The groups mirror the data layout rather than pretending that all) Tj ET
+BT /F1 10 Tf 54 121 Td (community names are fully understood:) Tj ET
+BT /F1 10 Tf 54 102 Td (| Native field | Bits | Visible controls |) Tj ET
+BT /F1 10 Tf 54 88 Td (| --- | --- | --- |) Tj ET
+BT /F1 10 Tf 54 74 Td (| Flags1 | B00-B07 | AvoidUnk, Footpath, Underground, Unused, SteepSlope, Water |) Tj ET
 endstream
 endobj
 7 0 obj
-<< /Type /Page /Parent 22 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 6 0 R >>
+<< /Type /Page /Parent 28 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 6 0 R >>
 endobj
 8 0 obj
-<< /Length 3254 >>
+<< /Length 3472 >>
 stream
 BT /F1 8 Tf 54 28 Td (GTANAVMESH Edit - User Guide) Tj ET
 BT /F3 8 Tf 485 28 Td (Page 3) Tj ET
-BT /F1 10 Tf 54 790 Td (An open edge is written as:) Tj ET
-BT /F1 10 Tf 54 771 Td (16383:16383, 16383:16383) Tj ET
-BT /F1 10 Tf 54 752 Td (Open edges are allowed on true borders, but too many open edges usually means) Tj ET
-BT /F1 10 Tf 54 738 Td (connectivity was lost.) Tj ET
-BT /F2 12 Tf 54 716 Td (Boundary Edges) Tj ET
-BT /F1 10 Tf 54 693 Td (A boundary edge is an edge used by only one face in the current mesh.) Tj ET
-BT /F1 10 Tf 54 674 Td (If another loaded navmesh has a matching boundary edge at the same world position, the) Tj ET
-BT /F1 10 Tf 54 660 Td (addon can create a cross-cell edge link.) Tj ET
-BT /F2 15 Tf 54 635 Td (3. Installation) Tj ET
-BT /F1 10 Tf 54 608 Td (1.) Tj ET
-BT /F1 10 Tf 70 608 Td (In Blender, open Edit > Preferences > Add-ons.) Tj ET
-BT /F1 10 Tf 54 594 Td (2.) Tj ET
-BT /F1 10 Tf 70 594 Td (Use Install....) Tj ET
-BT /F1 10 Tf 54 580 Td (3.) Tj ET
-BT /F1 10 Tf 70 580 Td (Select GTANAVMESH-Edit-v0.11.1.zip.) Tj ET
-BT /F1 10 Tf 54 566 Td (4.) Tj ET
-BT /F1 10 Tf 70 566 Td (Enable GTANAVMESH Edit.) Tj ET
-BT /F1 10 Tf 54 552 Td (5.) Tj ET
-BT /F1 10 Tf 70 552 Td (Open the 3D View sidebar and use the GTANAVMESH Edit tab.) Tj ET
-BT /F1 10 Tf 54 533 Td (After updating the addon zip, reload or reinstall the addon so Blender uses the newest) Tj ET
-BT /F1 10 Tf 54 519 Td (code.) Tj ET
-BT /F2 15 Tf 54 494 Td (4. Panel Fields) Tj ET
-BT /F2 12 Tf 54 464 Td (AreaID) Tj ET
-BT /F1 10 Tf 54 441 Td (The navmesh cell ID written into the exported XML.) Tj ET
-BT /F1 10 Tf 54 422 Td (Use the original Source XML whenever possible so this value stays correct.) Tj ET
-BT /F2 12 Tf 54 400 Td (ContentFlags) Tj ET
-BT /F1 10 Tf 54 377 Td (The XML ContentFlags value is still shown as text, for example:) Tj ET
-BT /F1 10 Tf 54 358 Td (Polygons, Portals) Tj ET
-BT /F1 10 Tf 54 339 Td (or:) Tj ET
-BT /F1 10 Tf 54 320 Td (Polygons, Portals, Unknown8) Tj ET
-BT /F1 10 Tf 54 301 Td (For direct editing, the panel also provides five toggles:) Tj ET
-BT /F1 10 Tf 54 282 Td (-) Tj ET
-BT /F1 10 Tf 70 282 Td (Polygons) Tj ET
-BT /F1 10 Tf 54 268 Td (-) Tj ET
-BT /F1 10 Tf 70 268 Td (Portals) Tj ET
-BT /F1 10 Tf 54 254 Td (-) Tj ET
-BT /F1 10 Tf 70 254 Td (Vehicle) Tj ET
-BT /F1 10 Tf 54 240 Td (-) Tj ET
-BT /F1 10 Tf 70 240 Td (Unknown8) Tj ET
-BT /F1 10 Tf 54 226 Td (-) Tj ET
-BT /F1 10 Tf 70 226 Td (Unknown16) Tj ET
-BT /F1 10 Tf 54 207 Td (Toggling a known value updates the comma-separated XML value. Other tokens) Tj ET
-BT /F1 10 Tf 54 193 Td (from an imported source remain in the text field, so a new control does not) Tj ET
-BT /F1 10 Tf 54 179 Td (discard an unfamiliar source flag. Use the raw field only when you need to) Tj ET
-BT /F1 10 Tf 54 165 Td (preserve or deliberately author a value outside the named controls.) Tj ET
-BT /F2 12 Tf 54 143 Td (Structured Polygon Flags) Tj ET
-BT /F1 10 Tf 54 120 Td (After selecting a face, use Load Active in Polygon Editor. The editor) Tj ET
-BT /F1 10 Tf 54 106 Td (shows the raw Flags line and the matching individual values:) Tj ET
-BT /F1 10 Tf 54 87 Td (-) Tj ET
-BT /F1 10 Tf 70 87 Td (Flags1, Flags2, Flags3, Flags4, UnkX and UnkY: byte values) Tj ET
-BT /F1 10 Tf 54 73 Td (\(0-255\).) Tj ET
+BT /F1 10 Tf 54 790 Td (| Flags2 | B08-B15 | four underground-unknown bits, PathNode, Interior, InteractionUnk) Tj ET
+BT /F1 10 Tf 54 776 Td (and Unused |) Tj ET
+BT /F1 10 Tf 54 762 Td (| Flags5 | B16 | the optional single Unused B16 bit |) Tj ET
+BT /F1 10 Tf 54 748 Td (| Flags3 | B17-B24 | FlatGround, Road, CellEdge, TrainTrack, ShallowWater,) Tj ET
+BT /F1 10 Tf 54 734 Td (FootpathUnk1, FootpathUnk2, FootpathMall |) Tj ET
+BT /F1 10 Tf 54 720 Td (| Flags4 | B25-B32 | SlopeSouth, SlopeSouthEast, SlopeEast, SlopeNorthEast,) Tj ET
+BT /F1 10 Tf 54 706 Td (SlopeNorth, SlopeNorthWest, SlopeWest, SlopeSouthWest |) Tj ET
+BT /F1 10 Tf 54 687 Td (Flags5 is not a general eighth byte: it stores B16 only and is restricted to) Tj ET
+BT /F1 10 Tf 54 673 Td (0 or 1. Unknown and Unused are still real exported bits, but their names) Tj ET
+BT /F1 10 Tf 54 659 Td (are intentionally conservative. Do not turn them into assumed gameplay) Tj ET
+BT /F1 10 Tf 54 645 Td (presets without comparing the source cell in CodeWalker.) Tj ET
+BT /F1 10 Tf 54 626 Td (Show Flag Colors uses the same additive color calculation as CodeWalker) Tj ET
+BT /F1 10 Tf 54 612 Td (and switches the current 3D View to Material Preview. Refresh Colors) Tj ET
+BT /F1 10 Tf 54 598 Td (reassigns those display materials after raw/bulk edits without touching YNV) Tj ET
+BT /F1 10 Tf 54 584 Td (metadata. The preview has alpha 0.75 and is diagnostic: some known bits have) Tj ET
+BT /F1 10 Tf 54 570 Td (no color contribution, and a color is not proof of intended gameplay behavior.) Tj ET
+BT /F2 12 Tf 54 548 Td (Edge Links) Tj ET
+BT /F1 10 Tf 54 525 Td (Each polygon edge has a link row such as:) Tj ET
+BT /F1 10 Tf 54 506 Td (4038:5, 4038:5) Tj ET
+BT /F1 10 Tf 54 487 Td (This points to polygon 5 in area 4038.) Tj ET
+BT /F1 10 Tf 54 468 Td (An open edge is written as:) Tj ET
+BT /F1 10 Tf 54 449 Td (16383:16383, 16383:16383) Tj ET
+BT /F1 10 Tf 54 430 Td (Open edges are allowed on true borders, but too many open edges usually means) Tj ET
+BT /F1 10 Tf 54 416 Td (connectivity was lost.) Tj ET
+BT /F2 12 Tf 54 394 Td (Boundary Edges) Tj ET
+BT /F1 10 Tf 54 371 Td (A boundary edge is an edge used by only one face in the current mesh.) Tj ET
+BT /F1 10 Tf 54 352 Td (If another loaded navmesh has a matching boundary edge at the same world position, the) Tj ET
+BT /F1 10 Tf 54 338 Td (addon can create a cross-cell edge link.) Tj ET
+BT /F2 15 Tf 54 313 Td (3. Installation) Tj ET
+BT /F1 10 Tf 54 286 Td (1.) Tj ET
+BT /F1 10 Tf 70 286 Td (In Blender, open Edit > Preferences > Add-ons.) Tj ET
+BT /F1 10 Tf 54 272 Td (2.) Tj ET
+BT /F1 10 Tf 70 272 Td (Use Install....) Tj ET
+BT /F1 10 Tf 54 258 Td (3.) Tj ET
+BT /F1 10 Tf 70 258 Td (Select GTANAVMESH-Edit-v0.12.0.zip.) Tj ET
+BT /F1 10 Tf 54 244 Td (4.) Tj ET
+BT /F1 10 Tf 70 244 Td (Enable GTANAVMESH Edit.) Tj ET
+BT /F1 10 Tf 54 230 Td (5.) Tj ET
+BT /F1 10 Tf 70 230 Td (Open the 3D View sidebar and use the GTANAVMESH Edit tab.) Tj ET
+BT /F1 10 Tf 54 211 Td (After updating the addon zip, reload or reinstall the addon so Blender uses the newest) Tj ET
+BT /F1 10 Tf 54 197 Td (code.) Tj ET
+BT /F2 15 Tf 54 172 Td (4. Panel Fields) Tj ET
+BT /F2 12 Tf 54 142 Td (AreaID) Tj ET
+BT /F1 10 Tf 54 119 Td (The navmesh cell ID written into the exported XML.) Tj ET
+BT /F1 10 Tf 54 100 Td (Use the original Source XML whenever possible so this value stays correct.) Tj ET
 endstream
 endobj
 9 0 obj
-<< /Type /Page /Parent 22 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 8 0 R >>
+<< /Type /Page /Parent 28 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 8 0 R >>
 endobj
 10 0 obj
-<< /Length 3589 >>
+<< /Length 3944 >>
 stream
 BT /F1 8 Tf 54 28 Td (GTANAVMESH Edit - User Guide) Tj ET
 BT /F3 8 Tf 485 28 Td (Page 4) Tj ET
-BT /F1 10 Tf 54 790 Td (-) Tj ET
-BT /F1 10 Tf 70 790 Td (Flags5 \(B16\): the single supported B16 value \(0 or 1\).) Tj ET
-BT /F1 10 Tf 54 771 Td (Numeric fields, the raw Flags line and the bit controls stay synchronized.) Tj ET
-BT /F1 10 Tf 54 757 Td (The visible named bits include Footpath, Road, CellEdge, FlatGround,) Tj ET
-BT /F1 10 Tf 54 743 Td (Water, TrainTrack, ShallowWater, Interior, PathNode,) Tj ET
-BT /F1 10 Tf 54 729 Td (SteepSlope and the eight slope-direction flags. Other controls are labelled) Tj ET
-BT /F1 10 Tf 54 715 Td (as Unknown or Unused where their gameplay meaning is not established;) Tj ET
-BT /F1 10 Tf 54 701 Td (they are still editable raw YNV data, not recommended defaults.) Tj ET
-BT /F2 12 Tf 54 679 Td (Structured Edge Flags) Tj ET
-BT /F1 10 Tf 54 656 Td (Every polygon vertex has one EdgesFlags row. Choose the zero-based Edge) Tj ET
-BT /F1 10 Tf 54 642 Td (index to expose that row as four bounded values:) Tj ET
-BT /F1 10 Tf 54 623 Td (-) Tj ET
-BT /F1 10 Tf 70 623 Td (Poly1 Unk2 and Poly2 Unk2 \(0-3\)) Tj ET
-BT /F1 10 Tf 54 609 Td (-) Tj ET
-BT /F1 10 Tf 70 609 Td (Poly1 Unk3 and Poly2 Unk3 \(0-2047\)) Tj ET
-BT /F1 10 Tf 54 590 Td (The values are written back to the selected row in CodeWalker form:) Tj ET
-BT /F1 10 Tf 54 571 Td (Poly1 Unk2:Poly1 Unk3, Poly2 Unk2:Poly2 Unk3) Tj ET
-BT /F1 10 Tf 54 552 Td (The raw multi-line EdgesFlags value remains available. Keep exactly one) Tj ET
-BT /F1 10 Tf 54 538 Td (edge link and one edge-flags row for each vertex of the polygon.) Tj ET
-BT /F2 12 Tf 54 516 Td (Source XML) Tj ET
-BT /F1 10 Tf 54 493 Td (Path to the original .ynv.xml file used to preserve metadata.) Tj ET
-BT /F2 12 Tf 54 471 Td (Auto Build Edges) Tj ET
-BT /F1 10 Tf 54 448 Td (For a mesh without prior metadata, the addon can build local same-cell links) Tj ET
-BT /F1 10 Tf 54 434 Td (during export. This is mainly a fallback for newly created simple navmeshes;) Tj ET
-BT /F1 10 Tf 54 420 Td (use an explicit) Tj ET
-BT /F1 10 Tf 54 406 Td (Rebuild Edges after a topology change.) Tj ET
-BT /F1 10 Tf 54 387 Td (For existing imported cells, Source XML preservation is preferred.) Tj ET
-BT /F2 12 Tf 54 365 Td (Strict Validation) Tj ET
-BT /F1 10 Tf 54 342 Td (Compatibility validation always rejects unsafe packed-field, bounds, edge and) Tj ET
-BT /F1 10 Tf 54 328 Td (portal data. With Strict Validation disabled, known legacy Rockstar issues) Tj ET
-BT /F1 10 Tf 54 314 Td (such as a zero-area corner or one-way local link are reported as warnings.) Tj ET
-BT /F1 10 Tf 54 300 Td (Enable it to turn those warnings into errors when authoring new geometry.) Tj ET
-BT /F2 15 Tf 54 275 Td (5. Button Reference) Tj ET
-BT /F2 12 Tf 54 245 Td (Import YNV XML) Tj ET
-BT /F1 10 Tf 54 222 Td (Opens an original .ynv.xml and creates the navmesh mesh, point hierarchy and) Tj ET
-BT /F1 10 Tf 54 208 Td (portal hierarchy. The selected XML becomes the Source XML immediately.) Tj ET
-BT /F1 10 Tf 54 189 Td (You can also reach it from File > Import > YNV NavMesh XML \(.ynv.xml\).) Tj ET
-BT /F2 12 Tf 54 167 Td (New Navmesh) Tj ET
-BT /F1 10 Tf 54 144 Td (Creates a small starter triangle using the panel's AreaID and ContentFlags.) Tj ET
-BT /F1 10 Tf 54 125 Td (Use it only for a genuinely new cell. Set a unique, valid AreaID, create) Tj ET
-BT /F1 10 Tf 54 111 Td (walkable geometry, assign flags and rebuild edges before export. A new mesh) Tj ET
-BT /F1 10 Tf 54 97 Td (does not have authoritative source topology, portal intent or neighbour links.) Tj ET
+BT /F2 12 Tf 54 790 Td (ContentFlags) Tj ET
+BT /F1 10 Tf 54 767 Td (The XML ContentFlags value is still shown as text, for example:) Tj ET
+BT /F1 10 Tf 54 748 Td (Polygons, Portals) Tj ET
+BT /F1 10 Tf 54 729 Td (or:) Tj ET
+BT /F1 10 Tf 54 710 Td (Polygons, Portals, Unknown8) Tj ET
+BT /F1 10 Tf 54 691 Td (For direct editing, the panel also provides five toggles:) Tj ET
+BT /F1 10 Tf 54 672 Td (-) Tj ET
+BT /F1 10 Tf 70 672 Td (Polygons) Tj ET
+BT /F1 10 Tf 54 658 Td (-) Tj ET
+BT /F1 10 Tf 70 658 Td (Portals) Tj ET
+BT /F1 10 Tf 54 644 Td (-) Tj ET
+BT /F1 10 Tf 70 644 Td (Vehicle) Tj ET
+BT /F1 10 Tf 54 630 Td (-) Tj ET
+BT /F1 10 Tf 70 630 Td (Unknown8) Tj ET
+BT /F1 10 Tf 54 616 Td (-) Tj ET
+BT /F1 10 Tf 70 616 Td (Unknown16) Tj ET
+BT /F1 10 Tf 54 597 Td (Toggling a known value updates the comma-separated XML value. Other tokens) Tj ET
+BT /F1 10 Tf 54 583 Td (from an imported source remain in the text field, so a new control does not) Tj ET
+BT /F1 10 Tf 54 569 Td (discard an unfamiliar source flag. Use the raw field only when you need to) Tj ET
+BT /F1 10 Tf 54 555 Td (preserve or deliberately author a value outside the named controls.) Tj ET
+BT /F2 12 Tf 54 533 Td (Structured Polygon Flags) Tj ET
+BT /F1 10 Tf 54 510 Td (After selecting a face, use Load Active in Polygon Editor. The editor) Tj ET
+BT /F1 10 Tf 54 496 Td (shows the raw Flags line and the matching individual values:) Tj ET
+BT /F1 10 Tf 54 477 Td (-) Tj ET
+BT /F1 10 Tf 70 477 Td (Flags1, Flags2, Flags3, Flags4, UnkX and UnkY: byte values) Tj ET
+BT /F1 10 Tf 54 463 Td (\(0-255\).) Tj ET
+BT /F1 10 Tf 54 449 Td (-) Tj ET
+BT /F1 10 Tf 70 449 Td (Flags5 \(B16\): the single supported B16 value \(0 or 1\).) Tj ET
+BT /F1 10 Tf 54 430 Td (Numeric fields, the raw Flags line and the bit controls stay synchronized.) Tj ET
+BT /F1 10 Tf 54 416 Td (The full set is grouped as Flags1 - general \(B00-B07\),) Tj ET
+BT /F1 10 Tf 54 402 Td (Flags2 - behaviour \(B08-B15\), Flags5 - optional B16,) Tj ET
+BT /F1 10 Tf 54 388 Td (Flags3 - surface category \(B17-B24\) and) Tj ET
+BT /F1 10 Tf 54 374 Td (Flags4 - slope direction \(B25-B32\). It includes Footpath, Road,) Tj ET
+BT /F1 10 Tf 54 360 Td (CellEdge, FlatGround, Water, TrainTrack, ShallowWater, Interior,) Tj ET
+BT /F1 10 Tf 54 346 Td (PathNode, SteepSlope and all eight slope-direction flags. Other controls) Tj ET
+BT /F1 10 Tf 54 332 Td (are labelled as Unknown or Unused where their gameplay meaning is not) Tj ET
+BT /F1 10 Tf 54 318 Td (established; they are still editable raw YNV data, not recommended defaults.) Tj ET
+BT /F1 10 Tf 54 299 Td (Enable Change named bit on selected faces before clicking a named flag to) Tj ET
+BT /F1 10 Tf 54 285 Td (paint only that flag bit over the current selected faces. Unlike a full flag) Tj ET
+BT /F1 10 Tf 54 271 Td (copy, this retains every selected face's other bits, UnkX and UnkY values.) Tj ET
+BT /F1 10 Tf 54 257 Td (When the option is off, a checkbox affects only the active polygon. Use) Tj ET
+BT /F1 10 Tf 54 243 Td (Apply Flags to Selected only when the complete raw flag set should become) Tj ET
+BT /F1 10 Tf 54 229 Td (identical across the selection.) Tj ET
+BT /F2 12 Tf 54 207 Td (Structured Edge Flags) Tj ET
+BT /F1 10 Tf 54 184 Td (Every polygon vertex has one EdgesFlags row. Choose the zero-based Edge) Tj ET
+BT /F1 10 Tf 54 170 Td (index to expose that row as four bounded values:) Tj ET
+BT /F1 10 Tf 54 151 Td (-) Tj ET
+BT /F1 10 Tf 70 151 Td (Poly1 Unk2 and Poly2 Unk2 \(0-3\)) Tj ET
+BT /F1 10 Tf 54 137 Td (-) Tj ET
+BT /F1 10 Tf 70 137 Td (Poly1 Unk3 and Poly2 Unk3 \(0-2047\)) Tj ET
+BT /F1 10 Tf 54 118 Td (The values are written back to the selected row in CodeWalker form:) Tj ET
+BT /F1 10 Tf 54 99 Td (Poly1 Unk2:Poly1 Unk3, Poly2 Unk2:Poly2 Unk3) Tj ET
+BT /F1 10 Tf 54 80 Td (The raw multi-line EdgesFlags value remains available. Keep exactly one) Tj ET
 endstream
 endobj
 11 0 obj
-<< /Type /Page /Parent 22 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 10 0 R >>
+<< /Type /Page /Parent 28 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 10 0 R >>
 endobj
 12 0 obj
-<< /Length 3320 >>
+<< /Length 3666 >>
 stream
 BT /F1 8 Tf 54 28 Td (GTANAVMESH Edit - User Guide) Tj ET
 BT /F3 8 Tf 485 28 Td (Page 5) Tj ET
+BT /F1 10 Tf 54 790 Td (edge link and one edge-flags row for each vertex of the polygon.) Tj ET
+BT /F2 12 Tf 54 768 Td (Source XML) Tj ET
+BT /F1 10 Tf 54 745 Td (Path to the original .ynv.xml file used to preserve metadata.) Tj ET
+BT /F2 12 Tf 54 723 Td (Auto Build Edges) Tj ET
+BT /F1 10 Tf 54 700 Td (For a mesh without prior metadata, the addon can build local same-cell links) Tj ET
+BT /F1 10 Tf 54 686 Td (during export. This is mainly a fallback for newly created simple navmeshes;) Tj ET
+BT /F1 10 Tf 54 672 Td (use an explicit) Tj ET
+BT /F1 10 Tf 54 658 Td (Rebuild Edges after a topology change.) Tj ET
+BT /F1 10 Tf 54 639 Td (For existing imported cells, Source XML preservation is preferred.) Tj ET
+BT /F2 12 Tf 54 617 Td (Strict Validation) Tj ET
+BT /F1 10 Tf 54 594 Td (Compatibility validation always rejects unsafe packed-field, bounds, edge and) Tj ET
+BT /F1 10 Tf 54 580 Td (portal data. With Strict Validation disabled, known legacy Rockstar issues) Tj ET
+BT /F1 10 Tf 54 566 Td (such as a zero-area corner or one-way local link are reported as warnings.) Tj ET
+BT /F1 10 Tf 54 552 Td (Enable it to turn those warnings into errors when authoring new geometry.) Tj ET
+BT /F2 15 Tf 54 527 Td (5. Button Reference) Tj ET
+BT /F2 12 Tf 54 497 Td (Import YNV XML) Tj ET
+BT /F1 10 Tf 54 474 Td (Opens an original .ynv.xml and creates the navmesh mesh, point hierarchy and) Tj ET
+BT /F1 10 Tf 54 460 Td (portal hierarchy. The selected XML becomes the Source XML immediately.) Tj ET
+BT /F1 10 Tf 54 441 Td (You can also reach it from File > Import > YNV NavMesh XML \(.ynv.xml\).) Tj ET
+BT /F2 12 Tf 54 419 Td (New Navmesh) Tj ET
+BT /F1 10 Tf 54 396 Td (Creates a small starter triangle using the panel's AreaID and ContentFlags.) Tj ET
+BT /F1 10 Tf 54 377 Td (Use it only for a genuinely new cell. Set a unique, valid AreaID, create) Tj ET
+BT /F1 10 Tf 54 363 Td (walkable geometry, assign flags and rebuild edges before export. A new mesh) Tj ET
+BT /F1 10 Tf 54 349 Td (does not have authoritative source topology, portal intent or neighbour links.) Tj ET
+BT /F2 12 Tf 54 327 Td (Generate Navmesh From Selected Mesh) Tj ET
+BT /F1 10 Tf 54 304 Td (Creates a new navmesh from the active non-navmesh mesh; the original mesh) Tj ET
+BT /F1 10 Tf 54 290 Td (is never modified. A confirmation dialog provides:) Tj ET
+BT /F1 10 Tf 54 271 Td (-) Tj ET
+BT /F1 10 Tf 70 271 Td (Max walkable slope \(0-89.9 degrees from world up; default 45 degrees\).) Tj ET
+BT /F1 10 Tf 54 257 Td (-) Tj ET
+BT /F1 10 Tf 70 257 Td (A starting flag preset: Flat Ground, Footpath, Road or Empty/custom.) Tj ET
+BT /F1 10 Tf 54 243 Td (-) Tj ET
+BT /F1 10 Tf 70 243 Td (Remove exact duplicate faces.) Tj ET
+BT /F1 10 Tf 54 224 Td (Object Mode processes all source faces. In Edit Mode it processes only the) Tj ET
+BT /F1 10 Tf 54 210 Td (selected source faces. The generator triangulates them, converts vertices to) Tj ET
+BT /F1 10 Tf 54 196 Td (world space, reverses downward face winding, and skips degenerate, too-steep,) Tj ET
+BT /F1 10 Tf 54 182 Td (and optionally exact duplicate triangles. It creates local same-cell links and) Tj ET
+BT /F1 10 Tf 54 168 Td (selects the resulting mesh.) Tj ET
+BT /F1 10 Tf 54 149 Td (This conversion is not a collision raycast/voxel generator and does not infer) Tj ET
+BT /F1 10 Tf 54 135 Td (clearance, portals, custom edge behavior, correct cell boundaries or final) Tj ET
+BT /F1 10 Tf 54 121 Td (gameplay flags. Review all open/non-manifold edges, add intentional markers,) Tj ET
+BT /F1 10 Tf 54 107 Td (then validate and test the exported XML.) Tj ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 28 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 12 0 R >>
+endobj
+14 0 obj
+<< /Length 3557 >>
+stream
+BT /F1 8 Tf 54 28 Td (GTANAVMESH Edit - User Guide) Tj ET
+BT /F3 8 Tf 485 28 Td (Page 6) Tj ET
 BT /F2 12 Tf 54 790 Td (Use Selected) Tj ET
 BT /F1 10 Tf 54 767 Td (Marks the selected mesh as a YNV navmesh and loads its metadata into the panel.) Tj ET
 BT /F1 10 Tf 54 748 Td (Use this if a mesh should be treated as the active navmesh.) Tj ET
@@ -285,335 +337,424 @@ BT /F1 10 Tf 54 545 Td (-) Tj ET
 BT /F1 10 Tf 70 545 Td (edge flags) Tj ET
 BT /F1 10 Tf 54 531 Td (-) Tj ET
 BT /F1 10 Tf 70 531 Td (polygon portal references) Tj ET
-BT /F2 12 Tf 54 509 Td (Fix Sources) Tj ET
-BT /F1 10 Tf 54 486 Td (Attempts to find missing Source XML paths for loaded navmeshes.) Tj ET
-BT /F1 10 Tf 54 467 Td (This is useful when a Blender file was moved or reopened and the addon needs to) Tj ET
-BT /F1 10 Tf 54 453 Td (reconnect a navmesh to its original XML. The addon stores the absolute source) Tj ET
-BT /F1 10 Tf 54 439 Td (path, the path relative to the .blend when possible, and the source file) Tj ET
-BT /F1 10 Tf 54 425 Td (name.) Tj ET
-BT /F1 10 Tf 54 406 Td (It is deliberately best effort. It does not overwrite a manually chosen) Tj ET
-BT /F1 10 Tf 54 392 Td (source and leaves ambiguous candidates unresolved. Inspect the resulting) Tj ET
-BT /F1 10 Tf 54 378 Td (Source XML, AreaID, polygon count and portal count yourself.) Tj ET
-BT /F2 12 Tf 54 356 Td (Validate) Tj ET
-BT /F1 10 Tf 54 333 Td (Checks the current export model for CodeWalker-compatible structure.) Tj ET
-BT /F1 10 Tf 54 314 Td (Use this before final export. Toggle Strict Validation when newly authored) Tj ET
-BT /F1 10 Tf 54 300 Td (geometry must also be free of legacy compatibility warnings. It is not a native) Tj ET
-BT /F1 10 Tf 54 286 Td (RSC7 compilation check and it does not prove in-game pathfinding behavior.) Tj ET
-BT /F2 12 Tf 54 264 Td (Export XML) Tj ET
-BT /F1 10 Tf 54 241 Td (Exports the selected navmesh to one .ynv.xml file.) Tj ET
-BT /F1 10 Tf 54 222 Td (The exporter preserves Source XML data when possible.) Tj ET
-BT /F2 12 Tf 54 200 Td (Export All) Tj ET
-BT /F1 10 Tf 54 177 Td (Exports all loaded navmeshes to a folder.) Tj ET
-BT /F1 10 Tf 54 158 Td (This is the recommended export when several neighboring cells are loaded. It) Tj ET
-BT /F1 10 Tf 54 144 Td (preserves:) Tj ET
-BT /F1 10 Tf 54 125 Td (-) Tj ET
-BT /F1 10 Tf 70 125 Td (AreaID) Tj ET
-BT /F1 10 Tf 54 111 Td (-) Tj ET
-BT /F1 10 Tf 70 111 Td (ContentFlags) Tj ET
-BT /F1 10 Tf 54 97 Td (-) Tj ET
-BT /F1 10 Tf 70 97 Td (bounds) Tj ET
-BT /F1 10 Tf 54 83 Td (-) Tj ET
-BT /F1 10 Tf 70 83 Td (points) Tj ET
-BT /F1 10 Tf 54 69 Td (-) Tj ET
-BT /F1 10 Tf 70 69 Td (portals) Tj ET
-endstream
-endobj
-13 0 obj
-<< /Type /Page /Parent 22 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 12 0 R >>
-endobj
-14 0 obj
-<< /Length 3388 >>
-stream
-BT /F1 8 Tf 54 28 Td (GTANAVMESH Edit - User Guide) Tj ET
-BT /F3 8 Tf 485 28 Td (Page 6) Tj ET
-BT /F1 10 Tf 54 790 Td (-) Tj ET
-BT /F1 10 Tf 70 790 Td (flags) Tj ET
-BT /F1 10 Tf 54 776 Td (-) Tj ET
-BT /F1 10 Tf 70 776 Td (edge links) Tj ET
-BT /F1 10 Tf 54 757 Td (It also updates matching cross-cell boundary links without destroying existing) Tj ET
-BT /F1 10 Tf 54 743 Td (internal links.) Tj ET
-BT /F2 12 Tf 54 721 Td (Compile YNV) Tj ET
-BT /F1 10 Tf 54 698 Td (Runs the optional cw_navmesh.compile_ynv operator. It invokes a local) Tj ET
-BT /F1 10 Tf 54 684 Td (ynv_compiler.exe chosen by the user and writes a native .ynv only after the) Tj ET
-BT /F1 10 Tf 54 670 Td (XML has passed the configured validation mode and the resulting bytes have) Tj ET
-BT /F1 10 Tf 54 656 Td (passed an in-memory RSC7 round trip.) Tj ET
-BT /F1 10 Tf 54 637 Td (Keep the source XML and output binary separate. The addon does not download a) Tj ET
-BT /F1 10 Tf 54 623 Td (compiler, and compilation is not a replacement for Validate or a game test.) Tj ET
-BT /F1 10 Tf 54 609 Td (After compiling, run ynv_compiler --check <output.ynv> to verify the RSC7) Tj ET
-BT /F1 10 Tf 54 595 Td (file can be read by the CodeWalker.Core-based reader used by the local) Tj ET
-BT /F1 10 Tf 54 581 Td (compiler.) Tj ET
-BT /F2 12 Tf 54 559 Td (Build Edges) Tj ET
-BT /F1 10 Tf 54 536 Td (Builds local edge links inside the same navmesh only.) Tj ET
-BT /F1 10 Tf 54 517 Td (Use this for simple same-cell geometry, but be careful on imported cells because it) Tj ET
-BT /F1 10 Tf 54 503 Td (does not rebuild external neighbor links.) Tj ET
-BT /F2 12 Tf 54 481 Td (Rebuild Edges) Tj ET
-BT /F1 10 Tf 54 458 Td (Rebuilds edge links from geometry.) Tj ET
-BT /F1 10 Tf 54 439 Td (It can create:) Tj ET
-BT /F1 10 Tf 54 420 Td (-) Tj ET
-BT /F1 10 Tf 70 420 Td (internal links between faces in the same mesh) Tj ET
-BT /F1 10 Tf 54 406 Td (-) Tj ET
-BT /F1 10 Tf 70 406 Td (cross-cell links to matching loaded neighbor cells) Tj ET
-BT /F1 10 Tf 54 392 Td (-) Tj ET
-BT /F1 10 Tf 70 392 Td (preserved external links to cells that are not loaded) Tj ET
-BT /F1 10 Tf 54 373 Td (Use this after adding or changing faces, for example when adding a bridge or custom) Tj ET
-BT /F1 10 Tf 54 359 Td (walkway.) Tj ET
-BT /F2 12 Tf 54 337 Td (Add Point) Tj ET
-BT /F1 10 Tf 54 314 Td (Adds a YNV point at the 3D cursor under the current navmesh root.) Tj ET
-BT /F2 12 Tf 54 292 Td (Add Portal) Tj ET
-BT /F1 10 Tf 54 269 Td (Adds a YNV portal at the 3D cursor under the current navmesh root.) Tj ET
-BT /F2 15 Tf 54 244 Td (6. Polygon Editor) Tj ET
-BT /F1 10 Tf 54 217 Td (The polygon editor works on the active face.) Tj ET
-BT /F2 12 Tf 54 195 Td (Load Active) Tj ET
-BT /F1 10 Tf 54 172 Td (Loads the active face metadata into the editor:) Tj ET
-BT /F1 10 Tf 54 153 Td (-) Tj ET
-BT /F1 10 Tf 70 153 Td (flags) Tj ET
-BT /F1 10 Tf 54 139 Td (-) Tj ET
-BT /F1 10 Tf 70 139 Td (edges) Tj ET
-BT /F1 10 Tf 54 125 Td (-) Tj ET
-BT /F1 10 Tf 70 125 Td (edge flags) Tj ET
-BT /F1 10 Tf 54 111 Td (-) Tj ET
-BT /F1 10 Tf 70 111 Td (portal refs) Tj ET
-BT /F1 10 Tf 54 97 Td (-) Tj ET
-BT /F1 10 Tf 70 97 Td (individual Flags1-Flags5, UnkX and UnkY controls) Tj ET
-BT /F1 10 Tf 54 83 Td (-) Tj ET
-BT /F1 10 Tf 70 83 Td (named polygon bit controls) Tj ET
-BT /F1 10 Tf 54 69 Td (-) Tj ET
-BT /F1 10 Tf 70 69 Td (the selected EdgesFlags row and its packed components) Tj ET
+BT /F2 12 Tf 54 509 Td (Load Neighbours) Tj ET
+BT /F1 10 Tf 54 486 Td (Loads existing surrounding .ynv.xml cells from the folder containing the) Tj ET
+BT /F1 10 Tf 54 472 Td (selected navmesh's explicit Source XML. It needs that real bound source) Tj ET
+BT /F1 10 Tf 54 458 Td (path and must be run in Object Mode; it does not use broad automatic file) Tj ET
+BT /F1 10 Tf 54 444 Td (searches.) Tj ET
+BT /F1 10 Tf 54 425 Td (The lookup follows CodeWalker's cell grid:) Tj ET
+BT /F3 9 Tf 54 406 Td (AreaID = y * 100 + x) Tj ET
+BT /F3 9 Tf 54 392 Td (navmesh[x * 3][y * 3].ynv.xml) Tj ET
+BT /F1 10 Tf 54 373 Td (It considers all eight surrounding cells by default \(the operator's advanced) Tj ET
+BT /F1 10 Tf 54 359 Td (option can limit it to north/south/east/west\). It skips files that are absent,) Tj ET
+BT /F1 10 Tf 54 345 Td (unreadable, already loaded, or whose embedded AreaID disagrees with the) Tj ET
+BT /F1 10 Tf 54 331 Td (expected cell. It restores the original selected mesh afterward. Run) Tj ET
+BT /F1 10 Tf 54 317 Td (Rebuild Edges after loading when a shared boundary has changed, and use) Tj ET
+BT /F1 10 Tf 54 303 Td (Export All for the edited group.) Tj ET
+BT /F2 12 Tf 54 281 Td (Fix Sources) Tj ET
+BT /F1 10 Tf 54 258 Td (Attempts to find missing Source XML paths for loaded navmeshes.) Tj ET
+BT /F1 10 Tf 54 239 Td (This is useful when a Blender file was moved or reopened and the addon needs to) Tj ET
+BT /F1 10 Tf 54 225 Td (reconnect a navmesh to its original XML. The addon stores the absolute source) Tj ET
+BT /F1 10 Tf 54 211 Td (path, the path relative to the .blend when possible, and the source file) Tj ET
+BT /F1 10 Tf 54 197 Td (name.) Tj ET
+BT /F1 10 Tf 54 178 Td (It is deliberately best effort. It does not overwrite a manually chosen) Tj ET
+BT /F1 10 Tf 54 164 Td (source and leaves ambiguous candidates unresolved. Inspect the resulting) Tj ET
+BT /F1 10 Tf 54 150 Td (Source XML, AreaID, polygon count and portal count yourself.) Tj ET
+BT /F2 12 Tf 54 128 Td (Validate) Tj ET
+BT /F1 10 Tf 54 105 Td (Checks the current export model for CodeWalker-compatible structure.) Tj ET
+BT /F1 10 Tf 54 86 Td (Use this before final export. Toggle Strict Validation when newly authored) Tj ET
+BT /F1 10 Tf 54 72 Td (geometry must also be free of legacy compatibility warnings. It is not a native) Tj ET
 endstream
 endobj
 15 0 obj
-<< /Type /Page /Parent 22 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 14 0 R >>
+<< /Type /Page /Parent 28 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 14 0 R >>
 endobj
 16 0 obj
-<< /Length 3825 >>
+<< /Length 3447 >>
 stream
 BT /F1 8 Tf 54 28 Td (GTANAVMESH Edit - User Guide) Tj ET
 BT /F3 8 Tf 485 28 Td (Page 7) Tj ET
-BT /F2 12 Tf 54 787 Td (Apply) Tj ET
-BT /F1 10 Tf 54 764 Td (Writes the editor values back to the active face.) Tj ET
-BT /F1 10 Tf 54 745 Td (For a flag-only change, the synchronized numeric, named-bit and selected-edge) Tj ET
-BT /F1 10 Tf 54 731 Td (controls write to the current active polygon directly. Apply remains the) Tj ET
-BT /F1 10 Tf 54 717 Td (safe explicit step after editing raw Flags, Edges, EdgesFlags or portal) Tj ET
-BT /F1 10 Tf 54 703 Td (rows.) Tj ET
-BT /F2 12 Tf 54 681 Td (Copy Flags) Tj ET
-BT /F1 10 Tf 54 658 Td (Copies the active face flags.) Tj ET
-BT /F2 12 Tf 54 636 Td (Paste Flags) Tj ET
-BT /F1 10 Tf 54 613 Td (Pastes copied flags to all selected faces. If no faces are selected, the flags are) Tj ET
-BT /F1 10 Tf 54 599 Td (pasted to the active face.) Tj ET
-BT /F2 15 Tf 54 574 Td (7. Typical Workflows) Tj ET
-BT /F2 12 Tf 54 544 Td (Import and Re-export Without Changes) Tj ET
-BT /F1 10 Tf 54 521 Td (1.) Tj ET
-BT /F1 10 Tf 70 521 Td (Import the original .ynv.xml.) Tj ET
-BT /F1 10 Tf 54 507 Td (2.) Tj ET
-BT /F1 10 Tf 70 507 Td (Confirm that the exact original file appears in Source XML.) Tj ET
-BT /F1 10 Tf 54 493 Td (3.) Tj ET
-BT /F1 10 Tf 70 493 Td (Use Validate.) Tj ET
-BT /F1 10 Tf 54 479 Td (4.) Tj ET
-BT /F1 10 Tf 70 479 Td (Use Export XML or Export All.) Tj ET
-BT /F1 10 Tf 54 460 Td (Expected result: bounds, points, flags and edge links should match the original.) Tj ET
-BT /F2 12 Tf 54 438 Td (Editing Flags) Tj ET
-BT /F1 10 Tf 54 415 Td (1.) Tj ET
-BT /F1 10 Tf 70 415 Td (Select a face.) Tj ET
-BT /F1 10 Tf 54 401 Td (2.) Tj ET
-BT /F1 10 Tf 70 401 Td (Click Load Active.) Tj ET
-BT /F1 10 Tf 54 387 Td (3.) Tj ET
-BT /F1 10 Tf 70 387 Td (Change named bit checkboxes, Flags1-Flags4, UnkX, UnkY or) Tj ET
-BT /F1 10 Tf 54 373 Td (Flags5 \(B16\). Use the raw Flags value only for an exact existing value.) Tj ET
-BT /F1 10 Tf 54 359 Td (4.) Tj ET
-BT /F1 10 Tf 70 359 Td (To edit edge metadata, select an Edge and change the two Unk2 and) Tj ET
-BT /F1 10 Tf 54 345 Td (two Unk3 values for that row.) Tj ET
-BT /F1 10 Tf 54 331 Td (5.) Tj ET
-BT /F1 10 Tf 70 331 Td (Click polygon Apply after any raw field change.) Tj ET
-BT /F1 10 Tf 54 317 Td (6.) Tj ET
-BT /F1 10 Tf 70 317 Td (Use Validate.) Tj ET
-BT /F1 10 Tf 54 303 Td (7.) Tj ET
-BT /F1 10 Tf 70 303 Td (Export.) Tj ET
-BT /F2 12 Tf 54 281 Td (Adding a Custom Bridge or Walkway) Tj ET
-BT /F1 10 Tf 54 258 Td (1.) Tj ET
-BT /F1 10 Tf 70 258 Td (Place or model the bridge/collision surface in Blender.) Tj ET
-BT /F1 10 Tf 54 244 Td (2.) Tj ET
-BT /F1 10 Tf 70 244 Td (Create navmesh faces on the walkable surface.) Tj ET
-BT /F1 10 Tf 54 230 Td (3.) Tj ET
-BT /F1 10 Tf 70 230 Td (Join those faces into the correct navmesh mesh, or create a new navmesh cell if) Tj ET
-BT /F1 10 Tf 70 216 Td (needed.) Tj ET
-BT /F1 10 Tf 54 202 Td (4.) Tj ET
-BT /F1 10 Tf 70 202 Td (Set suitable flags, for example road, footpath or flat ground depending on the use) Tj ET
-BT /F1 10 Tf 70 188 Td (case.) Tj ET
-BT /F1 10 Tf 54 174 Td (5.) Tj ET
-BT /F1 10 Tf 70 174 Td (Make sure connection edges line up cleanly with the existing navmesh.) Tj ET
-BT /F1 10 Tf 54 160 Td (6.) Tj ET
-BT /F1 10 Tf 70 160 Td (Run Rebuild Edges.) Tj ET
-BT /F1 10 Tf 54 146 Td (7.) Tj ET
-BT /F1 10 Tf 70 146 Td (Use Export All if neighbor cells are involved.) Tj ET
-BT /F1 10 Tf 54 132 Td (8.) Tj ET
-BT /F1 10 Tf 70 132 Td (Validate and compare the exported XML.) Tj ET
-BT /F1 10 Tf 54 113 Td (Important: if the polygon count changes, the exporter still writes only the) Tj ET
-BT /F1 10 Tf 54 99 Td (current Blender faces. It cannot blindly copy original edge links to new or) Tj ET
-BT /F1 10 Tf 54 85 Td (deleted faces, so Rebuild Edges must create valid connectivity from geometry.) Tj ET
+BT /F1 10 Tf 54 790 Td (RSC7 compilation check and it does not prove in-game pathfinding behavior.) Tj ET
+BT /F2 12 Tf 54 768 Td (Export XML) Tj ET
+BT /F1 10 Tf 54 745 Td (Exports the selected navmesh to one .ynv.xml file.) Tj ET
+BT /F1 10 Tf 54 726 Td (The exporter preserves Source XML data when possible.) Tj ET
+BT /F2 12 Tf 54 704 Td (Export All) Tj ET
+BT /F1 10 Tf 54 681 Td (Exports all loaded navmeshes to a folder.) Tj ET
+BT /F1 10 Tf 54 662 Td (This is the recommended export when several neighboring cells are loaded. It) Tj ET
+BT /F1 10 Tf 54 648 Td (preserves:) Tj ET
+BT /F1 10 Tf 54 629 Td (-) Tj ET
+BT /F1 10 Tf 70 629 Td (AreaID) Tj ET
+BT /F1 10 Tf 54 615 Td (-) Tj ET
+BT /F1 10 Tf 70 615 Td (ContentFlags) Tj ET
+BT /F1 10 Tf 54 601 Td (-) Tj ET
+BT /F1 10 Tf 70 601 Td (bounds) Tj ET
+BT /F1 10 Tf 54 587 Td (-) Tj ET
+BT /F1 10 Tf 70 587 Td (points) Tj ET
+BT /F1 10 Tf 54 573 Td (-) Tj ET
+BT /F1 10 Tf 70 573 Td (portals) Tj ET
+BT /F1 10 Tf 54 559 Td (-) Tj ET
+BT /F1 10 Tf 70 559 Td (flags) Tj ET
+BT /F1 10 Tf 54 545 Td (-) Tj ET
+BT /F1 10 Tf 70 545 Td (edge links) Tj ET
+BT /F1 10 Tf 54 526 Td (It also updates matching cross-cell boundary links without destroying existing) Tj ET
+BT /F1 10 Tf 54 512 Td (internal links.) Tj ET
+BT /F2 12 Tf 54 490 Td (Compile YNV) Tj ET
+BT /F1 10 Tf 54 467 Td (Runs the optional cw_navmesh.compile_ynv operator. It invokes a local) Tj ET
+BT /F1 10 Tf 54 453 Td (ynv_compiler.exe chosen by the user and writes a native .ynv only after the) Tj ET
+BT /F1 10 Tf 54 439 Td (XML has passed the configured validation mode and the resulting bytes have) Tj ET
+BT /F1 10 Tf 54 425 Td (passed an in-memory RSC7 round trip.) Tj ET
+BT /F1 10 Tf 54 406 Td (Keep the source XML and output binary separate. The addon does not download a) Tj ET
+BT /F1 10 Tf 54 392 Td (compiler, and compilation is not a replacement for Validate or a game test.) Tj ET
+BT /F1 10 Tf 54 378 Td (After compiling, run ynv_compiler --check <output.ynv> to verify the RSC7) Tj ET
+BT /F1 10 Tf 54 364 Td (file can be read by the CodeWalker.Core-based reader used by the local) Tj ET
+BT /F1 10 Tf 54 350 Td (compiler.) Tj ET
+BT /F2 12 Tf 54 328 Td (Build Edges) Tj ET
+BT /F1 10 Tf 54 305 Td (Builds local edge links inside the same navmesh only.) Tj ET
+BT /F1 10 Tf 54 286 Td (Use this for simple same-cell geometry, but be careful on imported cells because it) Tj ET
+BT /F1 10 Tf 54 272 Td (does not rebuild external neighbor links.) Tj ET
+BT /F2 12 Tf 54 250 Td (Rebuild Edges) Tj ET
+BT /F1 10 Tf 54 227 Td (Rebuilds edge links from geometry.) Tj ET
+BT /F1 10 Tf 54 208 Td (It can create:) Tj ET
+BT /F1 10 Tf 54 189 Td (-) Tj ET
+BT /F1 10 Tf 70 189 Td (internal links between faces in the same mesh) Tj ET
+BT /F1 10 Tf 54 175 Td (-) Tj ET
+BT /F1 10 Tf 70 175 Td (cross-cell links to matching loaded neighbor cells) Tj ET
+BT /F1 10 Tf 54 161 Td (-) Tj ET
+BT /F1 10 Tf 70 161 Td (preserved external links to cells that are not loaded) Tj ET
+BT /F1 10 Tf 54 142 Td (Use this after adding or changing faces, for example when adding a bridge or custom) Tj ET
+BT /F1 10 Tf 54 128 Td (walkway.) Tj ET
+BT /F2 12 Tf 54 106 Td (Add Point) Tj ET
+BT /F1 10 Tf 54 83 Td (Adds a YNV point at the 3D cursor under the current navmesh root. It is) Tj ET
+BT /F1 10 Tf 54 69 Td (available only when an imported or newly created GTANAVMESH Edit navmesh is) Tj ET
 endstream
 endobj
 17 0 obj
-<< /Type /Page /Parent 22 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 16 0 R >>
+<< /Type /Page /Parent 28 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 16 0 R >>
 endobj
 18 0 obj
-<< /Length 3917 >>
+<< /Length 3709 >>
 stream
 BT /F1 8 Tf 54 28 Td (GTANAVMESH Edit - User Guide) Tj ET
 BT /F3 8 Tf 485 28 Td (Page 8) Tj ET
-BT /F2 12 Tf 54 787 Td (Compile a Native Replacement) Tj ET
-BT /F1 10 Tf 54 764 Td (1.) Tj ET
-BT /F1 10 Tf 70 764 Td (Export a validated .ynv.xml to a new output folder.) Tj ET
-BT /F1 10 Tf 54 750 Td (2.) Tj ET
-BT /F1 10 Tf 70 750 Td (In the addon, choose the local compiler executable and use Compile YNV,) Tj ET
-BT /F1 10 Tf 54 736 Td (or run ynv_compiler <input.ynv.xml> <output.ynv> in PowerShell.) Tj ET
-BT /F1 10 Tf 54 722 Td (3.) Tj ET
-BT /F1 10 Tf 70 722 Td (Run ynv_compiler --check <output.ynv>.) Tj ET
-BT /F1 10 Tf 54 708 Td (4.) Tj ET
-BT /F1 10 Tf 70 708 Td (Keep both outputs, inspect the XML in CodeWalker, and test the exact) Tj ET
-BT /F1 10 Tf 54 694 Td (replacement/mod-loading setup in game.) Tj ET
-BT /F2 12 Tf 54 672 Td (Collision-to-Navmesh Workflow) Tj ET
-BT /F1 10 Tf 54 649 Td (Sometimes a collision mesh is placed over an area and selected faces are used as new) Tj ET
-BT /F1 10 Tf 54 635 Td (navmesh geometry.) Tj ET
-BT /F1 10 Tf 54 616 Td (This can work if:) Tj ET
-BT /F1 10 Tf 54 597 Td (-) Tj ET
-BT /F1 10 Tf 70 597 Td (the extracted faces are clean and walkable) Tj ET
-BT /F1 10 Tf 54 583 Td (-) Tj ET
-BT /F1 10 Tf 70 583 Td (the faces are joined into the correct navmesh object or assigned to a correct new) Tj ET
-BT /F1 10 Tf 70 569 Td (cell) Tj ET
-BT /F1 10 Tf 54 555 Td (-) Tj ET
-BT /F1 10 Tf 70 555 Td (the connection edges are aligned) Tj ET
-BT /F1 10 Tf 54 541 Td (-) Tj ET
-BT /F1 10 Tf 70 541 Td (flags are set correctly) Tj ET
-BT /F1 10 Tf 54 527 Td (-) Tj ET
-BT /F1 10 Tf 70 527 Td (edges are rebuilt before export) Tj ET
-BT /F1 10 Tf 54 508 Td (Avoid tiny gaps, overlapping duplicate faces and disconnected vertices at connection) Tj ET
-BT /F1 10 Tf 54 494 Td (points.) Tj ET
-BT /F2 15 Tf 54 469 Td (8. Export All Safety Rules) Tj ET
-BT /F1 10 Tf 54 442 Td (Export All is designed to avoid the old problem where cells, bounds or edge data were) Tj ET
-BT /F1 10 Tf 54 428 Td (lost.) Tj ET
-BT /F1 10 Tf 54 409 Td (Current behavior:) Tj ET
-BT /F1 10 Tf 54 390 Td (-) Tj ET
-BT /F1 10 Tf 70 390 Td (Each navmesh exports with its own Source XML when available.) Tj ET
-BT /F1 10 Tf 54 376 Td (-) Tj ET
-BT /F1 10 Tf 70 376 Td (Points and portals are taken only from the matching navmesh root.) Tj ET
-BT /F1 10 Tf 54 362 Td (-) Tj ET
-BT /F1 10 Tf 70 362 Td (If no clear root exists, Source XML points and portals are used.) Tj ET
-BT /F1 10 Tf 54 348 Td (-) Tj ET
-BT /F1 10 Tf 70 348 Td (Existing internal edge links are preserved.) Tj ET
-BT /F1 10 Tf 54 334 Td (-) Tj ET
-BT /F1 10 Tf 70 334 Td (Face metadata is reindexed through stable face IDs; links to deleted faces) Tj ET
-BT /F1 10 Tf 54 320 Td (become open boundaries instead of reviving source geometry.) Tj ET
-BT /F1 10 Tf 54 306 Td (-) Tj ET
-BT /F1 10 Tf 70 306 Td (Cross-cell boundary links are updated only where geometry matches loaded) Tj ET
-BT /F1 10 Tf 54 292 Td (neighbour cells, with reciprocal links on both loaded cells.) Tj ET
-BT /F2 15 Tf 54 267 Td (9. Troubleshooting) Tj ET
-BT /F2 12 Tf 54 237 Td (Bounds are too large) Tj ET
-BT /F1 10 Tf 54 214 Td (Cause: points or portals from multiple navmeshes may have been included.) Tj ET
-BT /F1 10 Tf 54 195 Td (Fix: use the updated addon, keep each imported navmesh under its own root, and use) Tj ET
-BT /F1 10 Tf 54 181 Td (Source XML paths.) Tj ET
-BT /F2 12 Tf 54 159 Td (Too many 16383:16383 open edges) Tj ET
-BT /F1 10 Tf 54 136 Td (Cause: edge links were lost or geometry does not connect.) Tj ET
-BT /F1 10 Tf 54 117 Td (Fix:) Tj ET
-BT /F1 10 Tf 54 98 Td (-) Tj ET
-BT /F1 10 Tf 70 98 Td (Reload the exact Source XML if the mesh was never bound to it.) Tj ET
-BT /F1 10 Tf 54 84 Td (-) Tj ET
-BT /F1 10 Tf 70 84 Td (After topology changes, run Rebuild Edges.) Tj ET
-BT /F1 10 Tf 54 70 Td (-) Tj ET
-BT /F1 10 Tf 70 70 Td (Check for gaps or misaligned boundary edges.) Tj ET
+BT /F1 10 Tf 54 790 Td (selected, preventing orphan points from being exported under the wrong cell.) Tj ET
+BT /F2 12 Tf 54 768 Td (Add Portal) Tj ET
+BT /F1 10 Tf 54 745 Td (Adds a YNV portal at the 3D cursor under the current navmesh root. It is) Tj ET
+BT /F1 10 Tf 54 731 Td (available only for a selected navmesh that has at least one polygon.) Tj ET
+BT /F1 10 Tf 54 712 Td (The active face becomes PolyFrom. When another face is selected, it becomes) Tj ET
+BT /F1 10 Tf 54 698 Td (PolyTo; both affected polygon portal-reference rows are created immediately.) Tj ET
+BT /F1 10 Tf 54 684 Td (With one available face, the portal starts as a same-face reference for) Tj ET
+BT /F1 10 Tf 54 670 Td (deliberate editing; it is never silently assigned to polygon zero. Select the) Tj ET
+BT /F1 10 Tf 54 656 Td (portal afterward to edit its Type, Angle, PolyFrom, PolyTo and center in) Tj ET
+BT /F1 10 Tf 54 642 Td (the panel.) Tj ET
+BT /F2 15 Tf 54 617 Td (6. Polygon Editor) Tj ET
+BT /F1 10 Tf 54 590 Td (The polygon editor works on the active face.) Tj ET
+BT /F2 12 Tf 54 568 Td (Load Active) Tj ET
+BT /F1 10 Tf 54 545 Td (Loads the active face metadata into the editor:) Tj ET
+BT /F1 10 Tf 54 526 Td (-) Tj ET
+BT /F1 10 Tf 70 526 Td (flags) Tj ET
+BT /F1 10 Tf 54 512 Td (-) Tj ET
+BT /F1 10 Tf 70 512 Td (edges) Tj ET
+BT /F1 10 Tf 54 498 Td (-) Tj ET
+BT /F1 10 Tf 70 498 Td (edge flags) Tj ET
+BT /F1 10 Tf 54 484 Td (-) Tj ET
+BT /F1 10 Tf 70 484 Td (portal refs) Tj ET
+BT /F1 10 Tf 54 470 Td (-) Tj ET
+BT /F1 10 Tf 70 470 Td (individual Flags1-Flags5, UnkX and UnkY controls) Tj ET
+BT /F1 10 Tf 54 456 Td (-) Tj ET
+BT /F1 10 Tf 70 456 Td (named polygon bit controls) Tj ET
+BT /F1 10 Tf 54 442 Td (-) Tj ET
+BT /F1 10 Tf 70 442 Td (the selected EdgesFlags row and its packed components) Tj ET
+BT /F2 12 Tf 54 420 Td (Apply) Tj ET
+BT /F1 10 Tf 54 397 Td (Writes the editor values back to the active face.) Tj ET
+BT /F1 10 Tf 54 378 Td (For a flag-only change, the synchronized numeric, named-bit and selected-edge) Tj ET
+BT /F1 10 Tf 54 364 Td (controls write to the current active polygon directly. Apply remains the) Tj ET
+BT /F1 10 Tf 54 350 Td (safe explicit step after editing raw Flags, Edges, EdgesFlags or portal) Tj ET
+BT /F1 10 Tf 54 336 Td (rows.) Tj ET
+BT /F2 12 Tf 54 314 Td (Apply Flags to Selected) Tj ET
+BT /F1 10 Tf 54 291 Td (Copies the complete currently shown raw flag set to selected faces \(or to the) Tj ET
+BT /F1 10 Tf 54 277 Td (active face when nothing is selected\). This intentionally replaces all flag) Tj ET
+BT /F1 10 Tf 54 263 Td (bytes on those faces. For a one-bit paint operation that preserves their other) Tj ET
+BT /F1 10 Tf 54 249 Td (data, enable Change named bit on selected faces and click the desired) Tj ET
+BT /F1 10 Tf 54 235 Td (named checkbox instead.) Tj ET
+BT /F2 12 Tf 54 213 Td (Select Matching) Tj ET
+BT /F1 10 Tf 54 190 Td (Selects every polygon whose complete raw CodeWalker flag bytes match the) Tj ET
+BT /F1 10 Tf 54 176 Td (active face. This is useful for finding an existing material/flag class before) Tj ET
+BT /F1 10 Tf 54 162 Td (making a targeted change; it does not compare visible color alone.) Tj ET
+BT /F2 12 Tf 54 140 Td (Show Flag Colors and Refresh Colors) Tj ET
+BT /F1 10 Tf 54 117 Td (Show Flag Colors refreshes the active navmesh's display materials and) Tj ET
+BT /F1 10 Tf 54 103 Td (switches the current 3D View to Material Preview. Refresh Colors only) Tj ET
+BT /F1 10 Tf 54 89 Td (refreshes those materials. Both use the packed flag data and do not rewrite) Tj ET
+BT /F1 10 Tf 54 75 Td (geometry, edge rows, portals, or source XML metadata.) Tj ET
 endstream
 endobj
 19 0 obj
-<< /Type /Page /Parent 22 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 18 0 R >>
+<< /Type /Page /Parent 28 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 18 0 R >>
 endobj
 20 0 obj
-<< /Length 2848 >>
+<< /Length 4064 >>
 stream
 BT /F1 8 Tf 54 28 Td (GTANAVMESH Edit - User Guide) Tj ET
 BT /F3 8 Tf 485 28 Td (Page 9) Tj ET
-BT /F2 12 Tf 54 787 Td (NPCs do not cross a custom bridge) Tj ET
-BT /F1 10 Tf 54 764 Td (Possible causes:) Tj ET
-BT /F1 10 Tf 54 745 Td (-) Tj ET
-BT /F1 10 Tf 70 745 Td (bridge navmesh faces are not connected to the existing navmesh) Tj ET
-BT /F1 10 Tf 54 731 Td (-) Tj ET
-BT /F1 10 Tf 70 731 Td (flags are wrong) Tj ET
-BT /F1 10 Tf 54 717 Td (-) Tj ET
-BT /F1 10 Tf 70 717 Td (edge links are open) Tj ET
-BT /F1 10 Tf 54 703 Td (-) Tj ET
-BT /F1 10 Tf 70 703 Td (the bridge is in the wrong cell) Tj ET
-BT /F1 10 Tf 54 689 Td (-) Tj ET
-BT /F1 10 Tf 70 689 Td (connection edges do not match neighbor geometry) Tj ET
-BT /F1 10 Tf 54 670 Td (Use Rebuild Edges, then inspect exported edge links.) Tj ET
-BT /F2 12 Tf 54 648 Td (Duplicate AreaID warning) Tj ET
-BT /F1 10 Tf 54 625 Td (Two loaded navmeshes have the same AreaID.) Tj ET
-BT /F1 10 Tf 54 606 Td (This is usually wrong unless you intentionally duplicated a cell for testing.) Tj ET
-BT /F2 12 Tf 54 584 Td (Polygon count differs from Source XML) Tj ET
-BT /F1 10 Tf 54 561 Td (The addon preserves matching face metadata but does not blindly reuse a) Tj ET
-BT /F1 10 Tf 54 547 Td (source-only polygon row.) Tj ET
-BT /F1 10 Tf 54 528 Td (Use Rebuild Edges and validate the result.) Tj ET
-BT /F2 15 Tf 54 503 Td (10. Recommended Checks Before Game Testing) Tj ET
-BT /F1 10 Tf 54 476 Td (Before putting an exported XML into a game workflow:) Tj ET
-BT /F1 10 Tf 54 457 Td (1.) Tj ET
-BT /F1 10 Tf 70 457 Td (Run Validate.) Tj ET
-BT /F1 10 Tf 54 443 Td (2.) Tj ET
-BT /F1 10 Tf 70 443 Td (Use Export All for multi-cell edits.) Tj ET
-BT /F1 10 Tf 54 429 Td (3.) Tj ET
-BT /F1 10 Tf 70 429 Td (Compare important fields against the original:) Tj ET
-BT /F1 10 Tf 54 415 Td (- AreaID) Tj ET
-BT /F1 10 Tf 54 401 Td (- ContentFlags) Tj ET
-BT /F1 10 Tf 54 387 Td (- BBMin) Tj ET
-BT /F1 10 Tf 54 373 Td (- BBMax) Tj ET
-BT /F1 10 Tf 54 359 Td (- point count) Tj ET
-BT /F1 10 Tf 54 345 Td (- portal count) Tj ET
-BT /F1 10 Tf 54 331 Td (- edge open/internal/external counts) Tj ET
-BT /F1 10 Tf 54 317 Td (4.) Tj ET
-BT /F1 10 Tf 70 317 Td (Inspect custom areas for open edges.) Tj ET
-BT /F1 10 Tf 54 303 Td (5.) Tj ET
-BT /F1 10 Tf 70 303 Td (Keep backups of original XML files.) Tj ET
-BT /F2 15 Tf 54 278 Td (11. Notes) Tj ET
-BT /F1 10 Tf 54 251 Td (This addon exports CodeWalker-compatible XML and can optionally call a) Tj ET
-BT /F1 10 Tf 54 237 Td (user-configured local compiler for native .ynv output.) Tj ET
-BT /F1 10 Tf 54 218 Td (For edited geometry, correct navmesh behavior in game still depends on valid YNV) Tj ET
-BT /F1 10 Tf 54 204 Td (compilation and on how the target game setup loads the replacement navmesh.) Tj ET
-BT /F1 10 Tf 54 185 Td (See YNV_Import_Source_Compile.md for the companion workflow.) Tj ET
+BT /F2 12 Tf 54 787 Td (Copy Flags) Tj ET
+BT /F1 10 Tf 54 764 Td (Copies the active face flags.) Tj ET
+BT /F2 12 Tf 54 742 Td (Paste Flags) Tj ET
+BT /F1 10 Tf 54 719 Td (Pastes copied flags to all selected faces. If no faces are selected, the flags are) Tj ET
+BT /F1 10 Tf 54 705 Td (pasted to the active face.) Tj ET
+BT /F2 15 Tf 54 680 Td (7. Typical Workflows) Tj ET
+BT /F2 12 Tf 54 650 Td (Import and Re-export Without Changes) Tj ET
+BT /F1 10 Tf 54 627 Td (1.) Tj ET
+BT /F1 10 Tf 70 627 Td (Import the original .ynv.xml.) Tj ET
+BT /F1 10 Tf 54 613 Td (2.) Tj ET
+BT /F1 10 Tf 70 613 Td (Confirm that the exact original file appears in Source XML.) Tj ET
+BT /F1 10 Tf 54 599 Td (3.) Tj ET
+BT /F1 10 Tf 70 599 Td (Use Validate.) Tj ET
+BT /F1 10 Tf 54 585 Td (4.) Tj ET
+BT /F1 10 Tf 70 585 Td (Use Export XML or Export All.) Tj ET
+BT /F1 10 Tf 54 566 Td (Expected result: bounds, points, flags and edge links should match the original.) Tj ET
+BT /F2 12 Tf 54 544 Td (Editing Flags) Tj ET
+BT /F1 10 Tf 54 521 Td (1.) Tj ET
+BT /F1 10 Tf 70 521 Td (Select a face.) Tj ET
+BT /F1 10 Tf 54 507 Td (2.) Tj ET
+BT /F1 10 Tf 70 507 Td (Click Load Active.) Tj ET
+BT /F1 10 Tf 54 493 Td (3.) Tj ET
+BT /F1 10 Tf 70 493 Td (Change a named bit, Flags1-Flags4, UnkX, UnkY or Flags5 \(B16\).) Tj ET
+BT /F1 10 Tf 54 479 Td (The five grouped sections together cover B00-B32. Use the raw Flags) Tj ET
+BT /F1 10 Tf 54 465 Td (value only for an exact existing value.) Tj ET
+BT /F1 10 Tf 54 451 Td (4.) Tj ET
+BT /F1 10 Tf 70 451 Td (To paint just one named bit over several faces, select those faces, enable) Tj ET
+BT /F1 10 Tf 54 437 Td (Change named bit on selected faces, then toggle the checkbox. Their) Tj ET
+BT /F1 10 Tf 54 423 Td (remaining bit values and raw unknown bytes stay intact. To copy all bytes,) Tj ET
+BT /F1 10 Tf 54 409 Td (use Apply Flags to Selected instead.) Tj ET
+BT /F1 10 Tf 54 395 Td (5.) Tj ET
+BT /F1 10 Tf 70 395 Td (Use Show Flag Colors to inspect the CodeWalker material calculation;) Tj ET
+BT /F1 10 Tf 54 381 Td (use Select Matching to find equivalent full raw flag sets.) Tj ET
+BT /F1 10 Tf 54 367 Td (6.) Tj ET
+BT /F1 10 Tf 70 367 Td (To edit edge metadata, select an Edge and change the two Unk2 and) Tj ET
+BT /F1 10 Tf 54 353 Td (two Unk3 values for that row.) Tj ET
+BT /F1 10 Tf 54 339 Td (7.) Tj ET
+BT /F1 10 Tf 70 339 Td (Click polygon Apply after any raw field change.) Tj ET
+BT /F1 10 Tf 54 325 Td (8.) Tj ET
+BT /F1 10 Tf 70 325 Td (Use Validate.) Tj ET
+BT /F1 10 Tf 54 311 Td (9.) Tj ET
+BT /F1 10 Tf 70 311 Td (Export.) Tj ET
+BT /F2 12 Tf 54 289 Td (Adding a Custom Bridge or Walkway) Tj ET
+BT /F1 10 Tf 54 266 Td (1.) Tj ET
+BT /F1 10 Tf 70 266 Td (Place or model the bridge/collision surface in Blender.) Tj ET
+BT /F1 10 Tf 54 252 Td (2.) Tj ET
+BT /F1 10 Tf 70 252 Td (Create navmesh faces on the walkable surface.) Tj ET
+BT /F1 10 Tf 54 238 Td (3.) Tj ET
+BT /F1 10 Tf 70 238 Td (Join those faces into the correct navmesh mesh, or create a new navmesh cell if) Tj ET
+BT /F1 10 Tf 70 224 Td (needed.) Tj ET
+BT /F1 10 Tf 54 210 Td (4.) Tj ET
+BT /F1 10 Tf 70 210 Td (Set suitable flags, for example road, footpath or flat ground depending on the use) Tj ET
+BT /F1 10 Tf 70 196 Td (case.) Tj ET
+BT /F1 10 Tf 54 182 Td (5.) Tj ET
+BT /F1 10 Tf 70 182 Td (Make sure connection edges line up cleanly with the existing navmesh.) Tj ET
+BT /F1 10 Tf 54 168 Td (6.) Tj ET
+BT /F1 10 Tf 70 168 Td (Run Rebuild Edges.) Tj ET
+BT /F1 10 Tf 54 154 Td (7.) Tj ET
+BT /F1 10 Tf 70 154 Td (Use Export All if neighbor cells are involved.) Tj ET
+BT /F1 10 Tf 54 140 Td (8.) Tj ET
+BT /F1 10 Tf 70 140 Td (Validate and compare the exported XML.) Tj ET
+BT /F1 10 Tf 54 121 Td (Important: if the polygon count changes, the exporter still writes only the) Tj ET
+BT /F1 10 Tf 54 107 Td (current Blender faces. It cannot blindly copy original edge links to new or) Tj ET
+BT /F1 10 Tf 54 93 Td (deleted faces, so Rebuild Edges must create valid connectivity from geometry.) Tj ET
 endstream
 endobj
 21 0 obj
-<< /Type /Page /Parent 22 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 20 0 R >>
+<< /Type /Page /Parent 28 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 20 0 R >>
 endobj
 22 0 obj
-<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R 11 0 R 13 0 R 15 0 R 17 0 R 19 0 R 21 0 R] /Count 9 >>
+<< /Length 4479 >>
+stream
+BT /F1 8 Tf 54 28 Td (GTANAVMESH Edit - User Guide) Tj ET
+BT /F3 8 Tf 485 28 Td (Page 10) Tj ET
+BT /F2 12 Tf 54 790 Td (Compile a Native Replacement) Tj ET
+BT /F1 10 Tf 54 767 Td (1.) Tj ET
+BT /F1 10 Tf 70 767 Td (Export a validated .ynv.xml to a new output folder.) Tj ET
+BT /F1 10 Tf 54 753 Td (2.) Tj ET
+BT /F1 10 Tf 70 753 Td (In the addon, choose the local compiler executable and use Compile YNV,) Tj ET
+BT /F1 10 Tf 54 739 Td (or run ynv_compiler <input.ynv.xml> <output.ynv> in PowerShell.) Tj ET
+BT /F1 10 Tf 54 725 Td (3.) Tj ET
+BT /F1 10 Tf 70 725 Td (Run ynv_compiler --check <output.ynv>.) Tj ET
+BT /F1 10 Tf 54 711 Td (4.) Tj ET
+BT /F1 10 Tf 70 711 Td (Keep both outputs, inspect the XML in CodeWalker, and test the exact) Tj ET
+BT /F1 10 Tf 54 697 Td (replacement/mod-loading setup in game.) Tj ET
+BT /F2 12 Tf 54 675 Td (Collision-to-Navmesh Workflow) Tj ET
+BT /F1 10 Tf 54 652 Td (1.) Tj ET
+BT /F1 10 Tf 70 652 Td (Set the intended AreaID \(including a deliberate 0 when appropriate\)) Tj ET
+BT /F1 10 Tf 54 638 Td (and ContentFlags before generating.) Tj ET
+BT /F1 10 Tf 54 624 Td (2.) Tj ET
+BT /F1 10 Tf 70 624 Td (Select the collision or ordinary mesh; enter Edit Mode and select only the) Tj ET
+BT /F1 10 Tf 54 610 Td (wanted source faces when conversion should not use the entire object.) Tj ET
+BT /F1 10 Tf 54 596 Td (3.) Tj ET
+BT /F1 10 Tf 70 596 Td (Run Generate Navmesh From Selected Mesh. Choose a conservative maximum) Tj ET
+BT /F1 10 Tf 54 582 Td (walkable slope and a starting flag preset.) Tj ET
+BT /F1 10 Tf 54 568 Td (4.) Tj ET
+BT /F1 10 Tf 70 568 Td (Inspect the created separate navmesh: solve any non-manifold/open edges,) Tj ET
+BT /F1 10 Tf 54 554 Td (apply source-appropriate flags, add points/portals deliberately, and do not) Tj ET
+BT /F1 10 Tf 54 540 Td (assume the source collision encoded gameplay pathing intent.) Tj ET
+BT /F1 10 Tf 54 526 Td (5.) Tj ET
+BT /F1 10 Tf 70 526 Td (Bind/load neighboring source cells if this navmesh joins other cells, run) Tj ET
+BT /F1 10 Tf 54 512 Td (Rebuild Edges, validate, export and test.) Tj ET
+BT /F1 10 Tf 54 493 Td (Avoid tiny gaps, overlapping duplicate faces and disconnected vertices at) Tj ET
+BT /F1 10 Tf 54 479 Td (connection points. The generator is a starting geometry conversion, not a) Tj ET
+BT /F1 10 Tf 54 465 Td (guarantee that every accepted triangle is usable in-game.) Tj ET
+BT /F2 12 Tf 54 443 Td (Edit a Cell Boundary With Neighbours) Tj ET
+BT /F1 10 Tf 54 420 Td (1.) Tj ET
+BT /F1 10 Tf 70 420 Td (Import or bind the exact original cell with Load Source.) Tj ET
+BT /F1 10 Tf 54 406 Td (2.) Tj ET
+BT /F1 10 Tf 70 406 Td (In Object Mode, select the navmesh and use Load Neighbours. Review the) Tj ET
+BT /F1 10 Tf 54 392 Td (report for absent, unreadable or AreaID-mismatched candidates instead of) Tj ET
+BT /F1 10 Tf 54 378 Td (treating missing files as loaded cells.) Tj ET
+BT /F1 10 Tf 54 364 Td (3.) Tj ET
+BT /F1 10 Tf 70 364 Td (Edit the boundary geometry and run Rebuild Edges after all relevant) Tj ET
+BT /F1 10 Tf 54 350 Td (cells are present.) Tj ET
+BT /F1 10 Tf 54 336 Td (4.) Tj ET
+BT /F1 10 Tf 70 336 Td (Use Export All. Inspect reciprocal boundary rows in the XML and test) Tj ET
+BT /F1 10 Tf 54 322 Td (traversal on both sides of the cell border.) Tj ET
+BT /F2 15 Tf 54 297 Td (8. Export All Safety Rules) Tj ET
+BT /F1 10 Tf 54 270 Td (Export All is designed to avoid the old problem where cells, bounds or edge data were) Tj ET
+BT /F1 10 Tf 54 256 Td (lost.) Tj ET
+BT /F1 10 Tf 54 237 Td (Current behavior:) Tj ET
+BT /F1 10 Tf 54 218 Td (-) Tj ET
+BT /F1 10 Tf 70 218 Td (Each navmesh exports with its own Source XML when available.) Tj ET
+BT /F1 10 Tf 54 204 Td (-) Tj ET
+BT /F1 10 Tf 70 204 Td (Points and portals are taken only from the matching navmesh root.) Tj ET
+BT /F1 10 Tf 54 190 Td (-) Tj ET
+BT /F1 10 Tf 70 190 Td (If no clear root exists, Source XML points and portals are used.) Tj ET
+BT /F1 10 Tf 54 176 Td (-) Tj ET
+BT /F1 10 Tf 70 176 Td (Existing internal edge links are preserved.) Tj ET
+BT /F1 10 Tf 54 162 Td (-) Tj ET
+BT /F1 10 Tf 70 162 Td (Face metadata is reindexed through stable face IDs; links to deleted faces) Tj ET
+BT /F1 10 Tf 54 148 Td (become open boundaries instead of reviving source geometry.) Tj ET
+BT /F1 10 Tf 54 134 Td (-) Tj ET
+BT /F1 10 Tf 70 134 Td (Cross-cell boundary links are updated only where geometry matches loaded) Tj ET
+BT /F1 10 Tf 54 120 Td (neighbour cells, with reciprocal links on both loaded cells.) Tj ET
+endstream
 endobj
 23 0 obj
-<< /Type /Catalog /Pages 22 0 R >>
+<< /Type /Page /Parent 28 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 22 0 R >>
+endobj
+24 0 obj
+<< /Length 3207 >>
+stream
+BT /F1 8 Tf 54 28 Td (GTANAVMESH Edit - User Guide) Tj ET
+BT /F3 8 Tf 485 28 Td (Page 11) Tj ET
+BT /F2 15 Tf 54 790 Td (9. Troubleshooting) Tj ET
+BT /F2 12 Tf 54 760 Td (Bounds are too large) Tj ET
+BT /F1 10 Tf 54 737 Td (Cause: points or portals from multiple navmeshes may have been included.) Tj ET
+BT /F1 10 Tf 54 718 Td (Fix: use the updated addon, keep each imported navmesh under its own root, and use) Tj ET
+BT /F1 10 Tf 54 704 Td (Source XML paths.) Tj ET
+BT /F2 12 Tf 54 682 Td (Too many 16383:16383 open edges) Tj ET
+BT /F1 10 Tf 54 659 Td (Cause: edge links were lost or geometry does not connect.) Tj ET
+BT /F1 10 Tf 54 640 Td (Fix:) Tj ET
+BT /F1 10 Tf 54 621 Td (-) Tj ET
+BT /F1 10 Tf 70 621 Td (Reload the exact Source XML if the mesh was never bound to it.) Tj ET
+BT /F1 10 Tf 54 607 Td (-) Tj ET
+BT /F1 10 Tf 70 607 Td (After topology changes, run Rebuild Edges.) Tj ET
+BT /F1 10 Tf 54 593 Td (-) Tj ET
+BT /F1 10 Tf 70 593 Td (Check for gaps or misaligned boundary edges.) Tj ET
+BT /F2 12 Tf 54 571 Td (NPCs do not cross a custom bridge) Tj ET
+BT /F1 10 Tf 54 548 Td (Possible causes:) Tj ET
+BT /F1 10 Tf 54 529 Td (-) Tj ET
+BT /F1 10 Tf 70 529 Td (bridge navmesh faces are not connected to the existing navmesh) Tj ET
+BT /F1 10 Tf 54 515 Td (-) Tj ET
+BT /F1 10 Tf 70 515 Td (flags are wrong) Tj ET
+BT /F1 10 Tf 54 501 Td (-) Tj ET
+BT /F1 10 Tf 70 501 Td (edge links are open) Tj ET
+BT /F1 10 Tf 54 487 Td (-) Tj ET
+BT /F1 10 Tf 70 487 Td (the bridge is in the wrong cell) Tj ET
+BT /F1 10 Tf 54 473 Td (-) Tj ET
+BT /F1 10 Tf 70 473 Td (connection edges do not match neighbor geometry) Tj ET
+BT /F1 10 Tf 54 454 Td (Use Rebuild Edges, then inspect exported edge links.) Tj ET
+BT /F2 12 Tf 54 432 Td (Duplicate AreaID warning) Tj ET
+BT /F1 10 Tf 54 409 Td (Two loaded navmeshes have the same AreaID.) Tj ET
+BT /F1 10 Tf 54 390 Td (This is usually wrong unless you intentionally duplicated a cell for testing.) Tj ET
+BT /F2 12 Tf 54 368 Td (Polygon count differs from Source XML) Tj ET
+BT /F1 10 Tf 54 345 Td (The addon preserves matching face metadata but does not blindly reuse a) Tj ET
+BT /F1 10 Tf 54 331 Td (source-only polygon row.) Tj ET
+BT /F1 10 Tf 54 312 Td (Use Rebuild Edges and validate the result.) Tj ET
+BT /F2 15 Tf 54 287 Td (10. Recommended Checks Before Game Testing) Tj ET
+BT /F1 10 Tf 54 260 Td (Before putting an exported XML into a game workflow:) Tj ET
+BT /F1 10 Tf 54 241 Td (1.) Tj ET
+BT /F1 10 Tf 70 241 Td (Run Validate.) Tj ET
+BT /F1 10 Tf 54 227 Td (2.) Tj ET
+BT /F1 10 Tf 70 227 Td (Use Export All for multi-cell edits.) Tj ET
+BT /F1 10 Tf 54 213 Td (3.) Tj ET
+BT /F1 10 Tf 70 213 Td (Compare important fields against the original:) Tj ET
+BT /F1 10 Tf 54 199 Td (- AreaID) Tj ET
+BT /F1 10 Tf 54 185 Td (- ContentFlags) Tj ET
+BT /F1 10 Tf 54 171 Td (- BBMin) Tj ET
+BT /F1 10 Tf 54 157 Td (- BBMax) Tj ET
+BT /F1 10 Tf 54 143 Td (- point count) Tj ET
+BT /F1 10 Tf 54 129 Td (- portal count) Tj ET
+BT /F1 10 Tf 54 115 Td (- edge open/internal/external counts) Tj ET
+BT /F1 10 Tf 54 101 Td (4.) Tj ET
+BT /F1 10 Tf 70 101 Td (Inspect custom areas for open edges.) Tj ET
+BT /F1 10 Tf 54 87 Td (5.) Tj ET
+BT /F1 10 Tf 70 87 Td (Keep backups of original XML files.) Tj ET
+endstream
+endobj
+25 0 obj
+<< /Type /Page /Parent 28 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 24 0 R >>
+endobj
+26 0 obj
+<< /Length 635 >>
+stream
+BT /F1 8 Tf 54 28 Td (GTANAVMESH Edit - User Guide) Tj ET
+BT /F3 8 Tf 485 28 Td (Page 12) Tj ET
+BT /F2 15 Tf 54 784 Td (11. Notes) Tj ET
+BT /F1 10 Tf 54 757 Td (This addon exports CodeWalker-compatible XML and can optionally call a) Tj ET
+BT /F1 10 Tf 54 743 Td (user-configured local compiler for native .ynv output.) Tj ET
+BT /F1 10 Tf 54 724 Td (For edited geometry, correct navmesh behavior in game still depends on valid YNV) Tj ET
+BT /F1 10 Tf 54 710 Td (compilation and on how the target game setup loads the replacement navmesh.) Tj ET
+BT /F1 10 Tf 54 691 Td (See YNV_Import_Source_Compile.md for the companion workflow.) Tj ET
+endstream
+endobj
+27 0 obj
+<< /Type /Page /Parent 28 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R /F3 3 0 R >> >> /Contents 26 0 R >>
+endobj
+28 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R 11 0 R 13 0 R 15 0 R 17 0 R 19 0 R 21 0 R 23 0 R 25 0 R 27 0 R] /Count 12 >>
+endobj
+29 0 obj
+<< /Type /Catalog /Pages 28 0 R >>
 endobj
 xref
-0 24
+0 30
 0000000000 65535 f 
 0000000015 00000 n 
 0000000085 00000 n 
 0000000160 00000 n 
 0000000228 00000 n 
-0000004155 00000 n 
-0000004302 00000 n 
-0000008085 00000 n 
-0000008232 00000 n 
-0000011538 00000 n 
-0000011685 00000 n 
-0000015327 00000 n 
-0000015476 00000 n 
-0000018849 00000 n 
-0000018998 00000 n 
-0000022439 00000 n 
-0000022588 00000 n 
-0000026466 00000 n 
-0000026615 00000 n 
-0000030585 00000 n 
-0000030734 00000 n 
-0000033635 00000 n 
-0000033784 00000 n 
-0000033896 00000 n 
+0000004156 00000 n 
+0000004303 00000 n 
+0000008475 00000 n 
+0000008622 00000 n 
+0000012146 00000 n 
+0000012293 00000 n 
+0000016290 00000 n 
+0000016439 00000 n 
+0000020158 00000 n 
+0000020307 00000 n 
+0000023917 00000 n 
+0000024066 00000 n 
+0000027566 00000 n 
+0000027715 00000 n 
+0000031477 00000 n 
+0000031626 00000 n 
+0000035743 00000 n 
+0000035892 00000 n 
+0000040424 00000 n 
+0000040573 00000 n 
+0000043833 00000 n 
+0000043982 00000 n 
+0000044669 00000 n 
+0000044818 00000 n 
+0000044952 00000 n 
 trailer
-<< /Size 24 /Root 23 0 R >>
+<< /Size 30 /Root 29 0 R >>
 startxref
-33947
+45003
 %%EOF

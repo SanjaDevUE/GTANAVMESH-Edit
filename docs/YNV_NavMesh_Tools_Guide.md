@@ -1,6 +1,6 @@
 # GTANAVMESH Edit - User Guide
 
-Version: **v0.11.1**
+Version: **v0.12.0**
 Copyright © 2026 devsanja
 
 ## 1. Purpose
@@ -8,6 +8,10 @@ Copyright © 2026 devsanja
 GTANAVMESH Edit is a Blender addon for importing, editing and exporting GTA
 V YNV navmesh XML files in a CodeWalker-compatible format. It can import XML
 directly or work with a navmesh imported through Sollumz.
+
+The direct input format is `.ynv.xml`, not a native binary `.ynv`. A native
+`.ynv` can be produced only by the separately configured local compiler after
+XML validation; GTANAVMESH Edit does not decode/import native `.ynv` files.
 
 The addon is designed to stay a pure Blender addon. CodeWalker and Sollumz
 reference behavior was used for compatibility decisions, but the addon does
@@ -35,7 +39,10 @@ Main goals:
 - Allow face-level flag editing inside Blender.
 - Export one selected navmesh or all loaded navmeshes back to `.ynv.xml`.
 - Support geometry-based edge rebuilds for edited navmeshes.
-- Create a starter navmesh cell for new work.
+- Load the source cells around a bound navmesh without broad file-system
+  guessing.
+- Create a starter cell or generate a reviewable starter navmesh from selected
+  collision/regular mesh geometry.
 - Optionally compile a validated XML export to native RSC7 `.ynv` with a
   user-configured local compiler.
 
@@ -60,6 +67,11 @@ Each cell has its own:
 `AreaID` is the numeric cell identifier used inside edge links. It must stay correct when replacing an existing game navmesh.
 
 If the `AreaID` is wrong, edge links can point to the wrong cell or become invalid.
+
+The valid range is **0–16382**. `AreaID` **0 is valid** and must not be
+treated as an empty/missing value; `16383` is reserved as the open-edge
+sentinel. An imported source with AreaID 0 is therefore authoritative just
+like any other imported cell.
 
 ### Source XML
 
@@ -91,19 +103,29 @@ export.
 
 ### Polygon Flags
 
-Each polygon has CodeWalker-style integer flags. The addon exposes these both as raw flag integers and as bit checkboxes.
+Each polygon has CodeWalker-style packed flag bytes. The add-on exposes the
+raw values, individual numeric fields, and all **33 known bits** as grouped
+checkboxes. The groups mirror the data layout rather than pretending that all
+community names are fully understood:
 
-Examples of known bits:
+| Native field | Bits | Visible controls |
+| --- | --- | --- |
+| `Flags1` | B00–B07 | `AvoidUnk`, `Footpath`, `Underground`, `Unused`, `SteepSlope`, `Water` |
+| `Flags2` | B08–B15 | four underground-unknown bits, `PathNode`, `Interior`, `InteractionUnk` and `Unused` |
+| `Flags5` | B16 | the optional single `Unused` B16 bit |
+| `Flags3` | B17–B24 | `FlatGround`, `Road`, `CellEdge`, `TrainTrack`, `ShallowWater`, `FootpathUnk1`, `FootpathUnk2`, `FootpathMall` |
+| `Flags4` | B25–B32 | `SlopeSouth`, `SlopeSouthEast`, `SlopeEast`, `SlopeNorthEast`, `SlopeNorth`, `SlopeNorthWest`, `SlopeWest`, `SlopeSouthWest` |
 
-- Footpath
-- Road
-- CellEdge
-- FlatGround
-- TrainTrack
-- ShallowWater
-- slope direction bits
+`Flags5` is not a general eighth byte: it stores B16 only and is restricted to
+0 or 1. `Unknown` and `Unused` are still real exported bits, but their names
+are intentionally conservative. Do not turn them into assumed gameplay
+presets without comparing the source cell in CodeWalker.
 
-Material colors are derived from the Sollumz-style flag interpretation so navmesh surfaces can be visually inspected in Blender.
+**Show Flag Colors** uses the same additive color calculation as CodeWalker
+and switches the current 3D View to Material Preview. **Refresh Colors**
+reassigns those display materials after raw/bulk edits without touching YNV
+metadata. The preview has alpha 0.75 and is diagnostic: some known bits have
+no color contribution, and a color is not proof of intended gameplay behavior.
 
 ### Edge Links
 
@@ -129,7 +151,7 @@ If another loaded navmesh has a matching boundary edge at the same world positio
 
 1. In Blender, open `Edit > Preferences > Add-ons`.
 2. Use `Install...`.
-3. Select `GTANAVMESH-Edit-v0.11.1.zip`.
+3. Select `GTANAVMESH-Edit-v0.12.0.zip`.
 4. Enable `GTANAVMESH Edit`.
 5. Open the 3D View sidebar and use the `GTANAVMESH Edit` tab.
 
@@ -176,11 +198,21 @@ shows the raw `Flags` line and the matching individual values:
 - `Flags5 (B16)`: the single supported B16 value (0 or 1).
 
 Numeric fields, the raw `Flags` line and the bit controls stay synchronized.
-The visible named bits include `Footpath`, `Road`, `CellEdge`, `FlatGround`,
-`Water`, `TrainTrack`, `ShallowWater`, `Interior`, `PathNode`,
-`SteepSlope` and the eight slope-direction flags. Other controls are labelled
-as `Unknown` or `Unused` where their gameplay meaning is not established;
-they are still editable raw YNV data, not recommended defaults.
+The full set is grouped as `Flags1 — general (B00–B07)`,
+`Flags2 — behaviour (B08–B15)`, `Flags5 — optional B16`,
+`Flags3 — surface category (B17–B24)` and
+`Flags4 — slope direction (B25–B32)`. It includes `Footpath`, `Road`,
+`CellEdge`, `FlatGround`, `Water`, `TrainTrack`, `ShallowWater`, `Interior`,
+`PathNode`, `SteepSlope` and all eight slope-direction flags. Other controls
+are labelled as `Unknown` or `Unused` where their gameplay meaning is not
+established; they are still editable raw YNV data, not recommended defaults.
+
+Enable **Change named bit on selected faces** before clicking a named flag to
+paint only that flag bit over the current selected faces. Unlike a full flag
+copy, this retains every selected face's other bits, `UnkX` and `UnkY` values.
+When the option is off, a checkbox affects only the active polygon. Use
+**Apply Flags to Selected** only when the complete raw flag set should become
+identical across the selection.
 
 ### Structured Edge Flags
 
@@ -234,6 +266,26 @@ Use it only for a genuinely new cell. Set a unique, valid `AreaID`, create
 walkable geometry, assign flags and rebuild edges before export. A new mesh
 does not have authoritative source topology, portal intent or neighbour links.
 
+### Generate Navmesh From Selected Mesh
+
+Creates a new navmesh from the active **non-navmesh** mesh; the original mesh
+is never modified. A confirmation dialog provides:
+
+- **Max walkable slope** (0–89.9 degrees from world up; default 45 degrees).
+- A starting flag preset: Flat Ground, Footpath, Road or Empty/custom.
+- **Remove exact duplicate faces**.
+
+Object Mode processes all source faces. In Edit Mode it processes only the
+selected source faces. The generator triangulates them, converts vertices to
+world space, reverses downward face winding, and skips degenerate, too-steep,
+and optionally exact duplicate triangles. It creates local same-cell links and
+selects the resulting mesh.
+
+This conversion is not a collision raycast/voxel generator and does not infer
+clearance, portals, custom edge behavior, correct cell boundaries or final
+gameplay flags. Review all open/non-manifold edges, add intentional markers,
+then validate and test the exported XML.
+
 ### Use Selected
 
 Marks the selected mesh as a YNV navmesh and loads its metadata into the panel.
@@ -258,6 +310,27 @@ For live faces that exactly match the source, the addon attaches:
 - edge links
 - edge flags
 - polygon portal references
+
+### Load Neighbours
+
+Loads existing surrounding `.ynv.xml` cells from the folder containing the
+selected navmesh's explicit **Source XML**. It needs that real bound source
+path and must be run in Object Mode; it does not use broad automatic file
+searches.
+
+The lookup follows CodeWalker's cell grid:
+
+```text
+AreaID = y * 100 + x
+navmesh[x * 3][y * 3].ynv.xml
+```
+
+It considers all eight surrounding cells by default (the operator's advanced
+option can limit it to north/south/east/west). It skips files that are absent,
+unreadable, already loaded, or whose embedded AreaID disagrees with the
+expected cell. It restores the original selected mesh afterward. Run
+**Rebuild Edges** after loading when a shared boundary has changed, and use
+**Export All** for the edited group.
 
 ### Fix Sources
 
@@ -335,11 +408,21 @@ Use this after adding or changing faces, for example when adding a bridge or cus
 
 ### Add Point
 
-Adds a YNV point at the 3D cursor under the current navmesh root.
+Adds a YNV point at the 3D cursor under the current navmesh root. It is
+available only when an imported or newly created GTANAVMESH Edit navmesh is
+selected, preventing orphan points from being exported under the wrong cell.
 
 ### Add Portal
 
-Adds a YNV portal at the 3D cursor under the current navmesh root.
+Adds a YNV portal at the 3D cursor under the current navmesh root. It is
+available only for a selected navmesh that has at least one polygon.
+
+The active face becomes `PolyFrom`. When another face is selected, it becomes
+`PolyTo`; both affected polygon portal-reference rows are created immediately.
+With one available face, the portal starts as a same-face reference for
+deliberate editing; it is never silently assigned to polygon zero. Select the
+portal afterward to edit its Type, Angle, `PolyFrom`, `PolyTo` and center in
+the panel.
 
 ## 6. Polygon Editor
 
@@ -366,6 +449,27 @@ controls write to the current active polygon directly. **Apply** remains the
 safe explicit step after editing raw `Flags`, `Edges`, `EdgesFlags` or portal
 rows.
 
+### Apply Flags to Selected
+
+Copies the complete currently shown raw flag set to selected faces (or to the
+active face when nothing is selected). This intentionally replaces all flag
+bytes on those faces. For a one-bit paint operation that preserves their other
+data, enable **Change named bit on selected faces** and click the desired
+named checkbox instead.
+
+### Select Matching
+
+Selects every polygon whose complete raw CodeWalker flag bytes match the
+active face. This is useful for finding an existing material/flag class before
+making a targeted change; it does not compare visible color alone.
+
+### Show Flag Colors and Refresh Colors
+
+**Show Flag Colors** refreshes the active navmesh's display materials and
+switches the current 3D View to Material Preview. **Refresh Colors** only
+refreshes those materials. Both use the packed flag data and do not rewrite
+geometry, edge rows, portals, or source XML metadata.
+
 ### Copy Flags
 
 Copies the active face flags.
@@ -389,13 +493,20 @@ Expected result: bounds, points, flags and edge links should match the original.
 
 1. Select a face.
 2. Click `Load Active`.
-3. Change named bit checkboxes, `Flags1`–`Flags4`, `UnkX`, `UnkY` or
-   `Flags5 (B16)`. Use the raw `Flags` value only for an exact existing value.
-4. To edit edge metadata, select an **Edge** and change the two `Unk2` and
+3. Change a named bit, `Flags1`–`Flags4`, `UnkX`, `UnkY` or `Flags5 (B16)`.
+   The five grouped sections together cover B00–B32. Use the raw `Flags`
+   value only for an exact existing value.
+4. To paint just one named bit over several faces, select those faces, enable
+   **Change named bit on selected faces**, then toggle the checkbox. Their
+   remaining bit values and raw unknown bytes stay intact. To copy all bytes,
+   use **Apply Flags to Selected** instead.
+5. Use **Show Flag Colors** to inspect the CodeWalker material calculation;
+   use **Select Matching** to find equivalent full raw flag sets.
+6. To edit edge metadata, select an **Edge** and change the two `Unk2` and
    two `Unk3` values for that row.
-5. Click polygon `Apply` after any raw field change.
-6. Use `Validate`.
-7. Export.
+7. Click polygon `Apply` after any raw field change.
+8. Use `Validate`.
+9. Export.
 
 ### Adding a Custom Bridge or Walkway
 
@@ -423,17 +534,32 @@ deleted faces, so `Rebuild Edges` must create valid connectivity from geometry.
 
 ### Collision-to-Navmesh Workflow
 
-Sometimes a collision mesh is placed over an area and selected faces are used as new navmesh geometry.
+1. Set the intended `AreaID` (including a deliberate `0` when appropriate)
+   and `ContentFlags` before generating.
+2. Select the collision or ordinary mesh; enter Edit Mode and select only the
+   wanted source faces when conversion should not use the entire object.
+3. Run **Generate Navmesh From Selected Mesh**. Choose a conservative maximum
+   walkable slope and a starting flag preset.
+4. Inspect the created separate navmesh: solve any non-manifold/open edges,
+   apply source-appropriate flags, add points/portals deliberately, and do not
+   assume the source collision encoded gameplay pathing intent.
+5. Bind/load neighboring source cells if this navmesh joins other cells, run
+   **Rebuild Edges**, validate, export and test.
 
-This can work if:
+Avoid tiny gaps, overlapping duplicate faces and disconnected vertices at
+connection points. The generator is a starting geometry conversion, not a
+guarantee that every accepted triangle is usable in-game.
 
-- the extracted faces are clean and walkable
-- the faces are joined into the correct navmesh object or assigned to a correct new cell
-- the connection edges are aligned
-- flags are set correctly
-- edges are rebuilt before export
+### Edit a Cell Boundary With Neighbours
 
-Avoid tiny gaps, overlapping duplicate faces and disconnected vertices at connection points.
+1. Import or bind the exact original cell with **Load Source**.
+2. In Object Mode, select the navmesh and use **Load Neighbours**. Review the
+   report for absent, unreadable or AreaID-mismatched candidates instead of
+   treating missing files as loaded cells.
+3. Edit the boundary geometry and run **Rebuild Edges** after all relevant
+   cells are present.
+4. Use **Export All**. Inspect reciprocal boundary rows in the XML and test
+   traversal on both sides of the cell border.
 
 ## 8. Export All Safety Rules
 

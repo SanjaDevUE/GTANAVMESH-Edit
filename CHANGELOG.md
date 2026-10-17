@@ -2,6 +2,48 @@
 
 All notable changes to GTANAVMESH Edit are documented in this file.
 
+## [0.12.0] - 2026-10-18
+
+### Added
+
+- Complete, grouped editing controls for all 33 known GTA V polygon bits:
+  `Flags1` B00–B07, `Flags2` B08–B15, optional `Flags5` B16, `Flags3`
+  B17–B24 and `Flags4` B25–B32.
+- CodeWalker-style additive flag-color materials with 0.75 alpha, plus
+  **Show Flag Colors** (Material Preview) and **Refresh Colors** actions.
+- Per-bit multi-face painting. When **Change named bit on selected faces** is
+  enabled, a checkbox updates only that bit for every selected face and keeps
+  each face's other flags and raw unknown bytes intact.
+- **Select Matching** for selecting every polygon with the complete raw flag
+  set of the active face.
+- **Load Neighbours**, which derives adjacent source XML names from the bound
+  source folder and CodeWalker's AreaID grid, validates embedded AreaIDs, and
+  avoids re-importing cells already present in the scene.
+- **Generate Navmesh From Selected Mesh** for converting the active regular or
+  collision mesh into a separate triangulated navmesh, with selected-face
+  mode, maximum-slope filtering, exact-duplicate removal and conservative
+  Flat Ground, Footpath, Road or empty flag presets.
+
+### Changed
+
+- Portal creation now derives `PolyFrom` from the active face and `PolyTo`
+  from another selected face when available, records reciprocal polygon portal
+  references immediately, and uses an explicit same-face starting reference
+  only when one face is available.
+- Point and portal actions require an imported or newly created navmesh root;
+  they no longer create unparented marker objects.
+- Generated navmeshes use world-space positions, upward winding, local edge
+  construction and a strict validation attempt, while leaving the source mesh
+  untouched.
+
+### Fixed
+
+- Flag-preview alpha is visible in supported Blender material APIs instead of
+  being silently forced opaque.
+- Explicit `AreaID` `0` is retained as a valid cell ID for source binding,
+  export, cross-cell links and neighbour loading. The edge sentinel `16383`
+  remains reserved.
+
 ## [0.11.1] - 2026-10-16
 
 ### Added

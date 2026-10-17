@@ -6,27 +6,41 @@ It is built for an XML-first workflow: inspect and edit the navmesh in
 Blender, validate the result, then optionally compile it to a native RSC7
 `.ynv` file.
 
-Version: **v0.11.1**
+The direct input format is `.ynv.xml`; GTANAVMESH Edit does not decode or
+import native binary `.ynv` files. Binary output remains an optional separate
+compiler step after XML validation.
+
+Version: **v0.12.0**
 Copyright © 2026 devsanja
 
 > Unofficial community tool. GTANAVMESH Edit is not affiliated with, endorsed
 > by, or associated with Rockstar Games or Take-Two Interactive.
 
-## Highlights in v0.11.1
+## Highlights in v0.12.0
 
 - Direct import and export of `.ynv.xml` from Blender's **File** menu and the
   **GTANAVMESH Edit** sidebar.
 - A visible, structured GTA navmesh editor: cell-level `ContentFlags` toggles,
-  per-polygon flag fields and named bit controls, plus a per-edge
-  `EdgesFlags` editor. The raw XML-style fields remain available for exact
-  inspection and advanced edits.
+  all **33 known GTA V polygon bits** grouped by their native flag storage,
+  and a per-edge `EdgesFlags` editor. The raw XML-style fields remain
+  available for exact inspection and advanced edits.
 - `ContentFlags` offers separate **Polygons**, **Portals**, **Vehicle**,
   **Unknown8** and **Unknown16** toggles. Changing a known toggle updates the
   comma-separated value while retaining unrecognised source tokens.
 - Each active polygon exposes `Flags1`, `Flags2`, `Flags3`, `Flags4`, `UnkX`,
-  `UnkY`, and `Flags5 (B16)` alongside named controls such as **Footpath**,
-  **Road**, **CellEdge**, **FlatGround**, **Water**, **TrainTrack**,
-  **ShallowWater**, **Interior** and slope-direction bits.
+  `UnkY`, and `Flags5 (B16)` alongside all named bits from **B00** through
+  **B32**: avoidance, underground, path-node, interior, interaction,
+  footpath, road, water, train-track, shallow-water and all eight
+  slope-direction bits. `Unknown` and `Unused` labels remain deliberately
+  editable raw data rather than guessed gameplay semantics.
+- **CodeWalker flag colors** use CodeWalker's additive packed-flag calculation
+  with its 0.75 alpha. **Show Flag Colors** switches the current 3D View to
+  Material Preview; **Refresh Colors** reapplies display materials without
+  changing any YNV data. Not every known bit has a visible color contribution.
+- For fast painting, **Change named bit on selected faces** changes only the
+  clicked bit on every selected face and preserves each face's other bits and
+  raw `UnkX`/`UnkY` bytes. **Apply Flags to Selected** intentionally copies
+  the complete raw flag set; **Select Matching** selects complete raw matches.
 - Choose an edge row to edit its packed `EdgesFlags` parts directly:
   `Poly1 Unk2`, `Poly1 Unk3`, `Poly2 Unk2` and `Poly2 Unk3`.
 - Stable face IDs preserve metadata when Blender reorders faces. Deleted
@@ -36,6 +50,17 @@ Copyright © 2026 devsanja
   source.
 - Rebuilds local and loaded-neighbour edge links from shared borders and
   writes reciprocal cross-cell links for both loaded cells.
+- **Load Neighbours** safely imports existing adjacent source XML cells from
+  the selected cell's source folder using CodeWalker's AreaID/file-name grid.
+  It skips already loaded, missing, unreadable and AreaID-mismatched files.
+- **Generate Navmesh From Selected Mesh** converts world-space collision or
+  regular mesh triangles into a separate navmesh, filters degenerate/too-steep
+  surfaces, creates local links, and offers conservative Flat Ground,
+  Footpath, Road or empty flag presets.
+- Adding a point or portal now requires a real navmesh root. A new portal is
+  immediately attached to the active face (`PolyFrom`) and, when a second face
+  is selected, to that face as `PolyTo`; its polygon portal-reference rows are
+  written at creation time.
 - Reads and writes standard Sollumz navmesh, point and portal properties when
   Sollumz is installed; it also works without Sollumz for XML import/export.
 - Validates the XML against CodeWalker-oriented structural and packed-field
@@ -45,8 +70,8 @@ Copyright © 2026 devsanja
 
 ## Download and install
 
-1. Open the v0.11.1 release and download
-   **`GTANAVMESH-Edit-v0.11.1.zip`**. Do not unpack it before installation.
+1. Open the v0.12.0 release and download
+   **`GTANAVMESH-Edit-v0.12.0.zip`**. Do not unpack it before installation.
 2. In Blender, open **Edit > Preferences > Add-ons**.
 3. Choose **Install...**, select the downloaded ZIP, then enable
    **GTANAVMESH Edit**.
@@ -85,8 +110,9 @@ or obtain optional tools separately. See [third-party notices](THIRD_PARTY_NOTIC
 2. Check `Source XML`, `AreaID`, polygon count and portal count in the
    **GTANAVMESH Edit** panel before changing geometry.
 3. Edit faces, flags, points or portals.
-4. If topology or a cell boundary changed, keep adjoining cells loaded and
-   use **Rebuild Edges**. Use **Export All** for multi-cell edits.
+4. If topology or a cell boundary changed, choose **Load Neighbours** while
+   the source XML is bound, keep the affected cells loaded, then use
+   **Rebuild Edges**. Use **Export All** for multi-cell edits.
 5. Run **Validate**, then export `.ynv.xml`.
 6. Inspect the XML in CodeWalker and test the final replacement in the exact
    target game/mod-loading setup.
@@ -104,8 +130,10 @@ Enable it for newly authored geometry and final quality review.
    source values unless you know the target cell requires a change.
 3. Select a face, choose **Load Active** in **Polygon Editor**, then edit the
    numeric `Flags1`–`Flags4`, `UnkX`, `UnkY` and `Flags5 (B16)` fields or the
-   named bit controls. The controls stay synchronized with the raw `Flags`
-   field.
+   grouped named bit controls. The controls stay synchronized with the raw
+   `Flags` field. Enable **Change named bit on selected faces** to paint only
+   one named bit across a face selection without replacing other per-face
+   flag data.
 4. For `EdgesFlags`, choose the zero-based **Edge** row, then edit the two
    `Unk2` values (0–3) and two `Unk3` values (0–2047). The row is represented
    as `Poly1 Unk2:Poly1 Unk3, Poly2 Unk2:Poly2 Unk3`.
@@ -115,6 +143,12 @@ Enable it for newly authored geometry and final quality review.
 Named bit labels are editing aids, not a promise of a fully known GTA gameplay
 meaning for every bit. Review unfamiliar or `Unknown` values against the
 original cell and in CodeWalker before changing them.
+
+Use **Show Flag Colors** in a 3D View to switch to Material Preview and see
+the additive CodeWalker-style color result of the packed flags. The preview is
+diagnostic only: a color does not establish that a particular set of flags is
+appropriate for gameplay. **Refresh Colors** is useful after raw bulk edits or
+after opening an older `.blend`.
 
 ### Create a new cell
 
@@ -128,6 +162,25 @@ original cell and in CodeWalker before changing them.
 New geometry has no authoritative source topology. Review all newly opened,
 portal and cross-cell links before release or game testing.
 
+### Generate a navmesh from collision or a regular mesh
+
+1. Set the target `AreaID` and `ContentFlags` in the panel. `AreaID` **0** is
+   valid when it is the intended cell; the supported range is 0–16382.
+2. Select a non-navmesh mesh. In Object Mode every face is considered; in Edit
+   Mode only selected faces are considered.
+3. Choose **Generate Navmesh From Selected Mesh**, set the maximum walkable
+   slope and a starting flag preset, then confirm.
+4. Review the new, separate navmesh. The generator triangulates faces in world
+   space, flips downward winding, skips degenerate/too-steep triangles and can
+   remove exact duplicate triangles. It does not edit the source mesh.
+5. Add deliberate points/portals, load neighbouring cells if needed, rebuild
+   edges, validate, inspect the XML in CodeWalker and test the result.
+
+This is a geometry conversion helper, not CodeWalker's full collision/raycast
+navmesh authoring system. It cannot infer portal intent, per-edge behavior,
+area boundaries, obstacles, or gameplay-safe flags. Resolve non-manifold/open
+edges and review every generated surface before use.
+
 ## Source binding and safe export behavior
 
 The Source XML is not just a template. It records data that geometry alone
@@ -140,6 +193,11 @@ automatic authority. If **Auto Find Source** is enabled, lookup is restricted
 to the blend/export folder and the explicitly chosen source-search folder. A
 candidate must have equal polygon count, near-identical bounds and be unique;
 a manually selected source is never replaced.
+
+An explicit `AreaID` is authoritative even when it is **0**. Zero is a real
+CodeWalker cell ID, not a missing value; only the edge sentinel `16383` is
+reserved. Do not change an imported `AreaID` merely because it displays as
+zero.
 
 Export always uses the current Blender face list:
 
@@ -201,7 +259,7 @@ in-game navigation behavior.
 | `ynv_compiler/` | Optional .NET 8 XML-to-RSC7 compiler. |
 | `tools/package_blender_addon.py` | Deterministic release ZIP builder and layout verifier. |
 | `docs/` | Detailed import, source-binding and editing guides. |
-| `RELEASE_NOTES.md` | v0.11.1 release summary and verification scope. |
+| `RELEASE_NOTES.md` | v0.12.0 release summary and verification scope. |
 | `CHANGELOG.md` | Version history. |
 | `THIRD_PARTY_NOTICES.md` | External dependency and affiliation notice. |
 
@@ -214,12 +272,12 @@ Build every Blender release ZIP with the repository packaging script rather
 than a generic archive command:
 
 ```powershell
-py .\tools\package_blender_addon.py --version 0.11.1
+py .\tools\package_blender_addon.py --version 0.12.0
 py .\tools\package_blender_addon.py --check `
-  .\dist\GTANAVMESH-Edit-v0.11.1.zip
+  .\dist\GTANAVMESH-Edit-v0.12.0.zip
 ```
 
-The builder creates `dist/GTANAVMESH-Edit-v0.11.1.zip`, rejects accidental
+The builder creates `dist/GTANAVMESH-Edit-v0.12.0.zip`, rejects accidental
 replacement unless `--force` is supplied, and prints the SHA-256 digest. It
 also writes a real `ynv_blender_addon/` directory entry as the first ZIP
 member. That explicit package-root entry is required by this project's Blender
@@ -233,7 +291,7 @@ confirm that the **GTANAVMESH Edit** sidebar tab is present.
 
 ## Release verification
 
-v0.11.1 is verified with the following checks before packaging:
+The v0.12.0 release checklist includes:
 
 - Python syntax compilation for the add-on modules.
 - Blender 4.1 background registration and unregistration.
@@ -244,6 +302,12 @@ v0.11.1 is verified with the following checks before packaging:
 - Reciprocal cross-cell link generation with two adjacent test cells.
 - Cell `ContentFlags`, named polygon-bit, raw polygon-field and selected-edge
   flag editor synchronization.
+- Full 33-bit group coverage, per-bit multi-face painting, exact raw-flag
+  matching and CodeWalker material-color refresh.
+- Safe point/portal creation, portal-reference rows and AreaID `0`
+  preservation.
+- Neighbour source-path mapping/AreaID mismatch handling and selected-mesh
+  generation with slope filtering.
 - Python validation boundary checks, including AreaID, float and
   adjacent-area limits.
 - Release build of `ynv_compiler`, followed by XML-to-RSC7 compilation and
@@ -261,7 +325,7 @@ mod configuration.
 
 - [Import, source binding and native compilation](docs/YNV_Import_Source_Compile.md)
 - [Navmesh tools user guide](docs/YNV_NavMesh_Tools_Guide.md)
-- [v0.11.1 release notes](RELEASE_NOTES.md)
+- [v0.12.0 release notes](RELEASE_NOTES.md)
 - [Changelog](CHANGELOG.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 
