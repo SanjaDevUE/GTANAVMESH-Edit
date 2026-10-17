@@ -9,9 +9,9 @@ that do not contain it.
 
 Examples:
 
-    py .\\tools\\package_blender_addon.py --version 0.12.1
+    py .\\tools\\package_blender_addon.py --version 0.12.2
     py .\\tools\\package_blender_addon.py --check `
-        .\\dist\\GTANAVMESH-Edit-v0.12.1.zip
+        .\\dist\\GTANAVMESH-Edit-v0.12.2.zip
 """
 
 from __future__ import annotations

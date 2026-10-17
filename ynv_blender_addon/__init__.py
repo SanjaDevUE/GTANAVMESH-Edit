@@ -3,7 +3,7 @@
 bl_info = {
     "name": "GTANAVMESH Edit",
     "author": "devsanja",
-    "version": (0, 12, 1),
+    "version": (0, 12, 2),
     "blender": (2, 80, 0),
     "location": "File > Import/Export; View3D > Sidebar > GTANAVMESH Edit",
     "description": "GTANAVMESH Edit imports, edits and exports GTA V YNV navmesh XML with CodeWalker validation.",
@@ -3847,6 +3847,42 @@ class CWNavmeshSettings(bpy.types.PropertyGroup):
         ),
         default=False,
     )
+    ui_show_all_flag_bits: bpy.props.BoolProperty(
+        name="All 33 GTA V Flag Bits",
+        description="Show the complete B00-B32 flag list, including uncommon and unknown bits.",
+        default=False,
+        options={"SKIP_SAVE"},
+    )
+    ui_show_advanced_face_data: bpy.props.BoolProperty(
+        name="Advanced Face Data",
+        description="Show raw flag bytes, copy/paste and full-flag batch operations.",
+        default=False,
+        options={"SKIP_SAVE"},
+    )
+    ui_show_edges_portals: bpy.props.BoolProperty(
+        name="Edges & Portals",
+        description="Show advanced edge links, packed edge flags and portal indices.",
+        default=False,
+        options={"SKIP_SAVE"},
+    )
+    ui_show_navmesh_setup: bpy.props.BoolProperty(
+        name="Navmesh Setup",
+        description="Show source binding, ContentFlags, import and generation controls.",
+        default=False,
+        options={"SKIP_SAVE"},
+    )
+    ui_show_neighbour_tools: bpy.props.BoolProperty(
+        name="Neighbour & Batch Tools",
+        description="Show neighbour loading, source repair, bulk export and point/portal tools.",
+        default=False,
+        options={"SKIP_SAVE"},
+    )
+    ui_show_compiler: bpy.props.BoolProperty(
+        name="Compile",
+        description="Show the optional native YNV compiler controls.",
+        default=False,
+        options={"SKIP_SAVE"},
+    )
     polygon_flags_1: bpy.props.IntProperty(
         name="Flags1",
         description="Raw CodeWalker Flags1 byte for the active polygon.",
@@ -5202,44 +5238,87 @@ class CWNAVMESH_OT_export_all_ynv_xml(bpy.types.Operator):
         return {"FINISHED"}
 
 
+def _draw_foldout_header(layout, settings, property_name, label, icon="NONE"):
+    """Draw a Blender-3.5-compatible, read-only foldout header."""
+    expanded = bool(getattr(settings, property_name))
+    row = layout.row(align=True)
+    row.prop(
+        settings,
+        property_name,
+        text="",
+        icon="TRIA_DOWN" if expanded else "TRIA_RIGHT",
+        icon_only=True,
+        emboss=False,
+    )
+    row.label(text=label, icon=icon)
+    return expanded
+
+
 def _draw_polygon_flags_editor(layout, context, settings, mesh_obj):
-    """Draw the high-priority per-face editor at the top of the sidebar."""
+    """Draw the compact everyday face editor without raw implementation data."""
 
     active_polygon = _active_polygon_index(mesh_obj)
     poly = layout.box()
-    poly.label(text="Polygon Flags & Colors", icon="MATERIAL")
-    poly.label(text=f"{mesh_obj.name}  •  active polygon {active_polygon} / {len(mesh_obj.data.polygons)}")
-    poly.prop(settings, "polygon_index")
+    poly.label(text="Quick Face Edit", icon="FACESEL")
+    poly.label(text=f"{mesh_obj.name}  -  face {active_polygon + 1} of {len(mesh_obj.data.polygons)}")
+    row = poly.row(align=True)
+    row.prop(settings, "polygon_index", text="Face")
+    row.operator(CWNAVMESH_OT_pick_polygon.bl_idname, text="Load Active", icon="RESTRICT_SELECT_OFF")
 
-    row = poly.row(align=True)
-    row.operator(CWNAVMESH_OT_pick_polygon.bl_idname, text="Load Active")
-    row.operator(CWNAVMESH_OT_apply_polygon.bl_idname, text="Apply")
-    row = poly.row(align=True)
-    row.operator(CWNAVMESH_OT_show_flag_colors.bl_idname, text="Show Flag Colors", icon="MATERIAL")
+    color_row = poly.row(align=True)
+    color_row.operator(CWNAVMESH_OT_show_flag_colors.bl_idname, text="Show Flag Colors", icon="MATERIAL")
+    swatch = color_row.row(align=True)
+    swatch.enabled = False
+    swatch.prop(settings, "active_flag_color", text="Preview")
+
+    flags_box = poly.box()
+    flags_box.label(text="Surface Flags", icon="MESH_DATA")
+    flags_box.prop(settings, "apply_flag_bit_to_selected", text="Paint named changes to selected faces", icon="BRUSH_DATA")
+    if settings.apply_flag_bit_to_selected:
+        flags_box.label(text="Each click keeps every other flag and raw byte on the selected faces.")
+    for left_name, left_label, right_name, right_label in (
+        ("flag_b02_footpath", "Footpath  +G .25", "flag_b17_flat_ground", "Flat Ground  +G .10"),
+        ("flag_b18_road", "Road  +B .03", "flag_b07_water", "Water  +B .25"),
+        ("flag_b21_shallow_water", "Shallow Water  +B .75", "flag_b20_train_track", "Train Track  +G .75"),
+        ("flag_b06_steep_slope", "Steep Slope  +R .25", "flag_b14_interior", "Interior  +B .10"),
+    ):
+        row = flags_box.row(align=True)
+        row.prop(settings, left_name, text=left_label)
+        row.prop(settings, right_name, text=right_label)
+    flags_box.label(text="Named flags save immediately. Water alone does not create world water.")
+
+
+def _draw_all_polygon_flag_bits(layout, settings):
+    flags_box = layout.box()
+    flags_box.label(text="All 33 GTA V Flag Bits", icon="PROPERTIES")
+    for group_label, group_bits in POLYGON_FLAG_GROUPS:
+        flags_box.label(text=group_label)
+        for index in range(0, len(group_bits), 2):
+            row = flags_box.row(align=True)
+            for attr_name, _label, _bit in group_bits[index:index + 2]:
+                row.prop(settings, attr_name)
+
+
+def _draw_advanced_face_data(layout, settings):
+    face_box = layout.box()
+    face_box.label(text="Advanced Face Data", icon="PREFERENCES")
+    row = face_box.row(align=True)
+    row.operator(CWNAVMESH_OT_apply_polygon.bl_idname, text="Apply Raw Face Data")
     row.operator(CWNAVMESH_OT_refresh_flag_colors.bl_idname, text="Refresh Colors", icon="FILE_REFRESH")
-
-    color_box = poly.box()
-    color_box.label(text="Exact CodeWalker Material Preview")
-    color_box.prop(settings, "active_flag_color", text="Active face colour")
-    color_box.label(text="Red: B00/B01 +.01 | B06 +.25 | B22 +.20")
-    color_box.label(text="Green: B02 +.25 | B03 +.02 | B17 +.10 | B20 +.75 | B24 = .20")
-    color_box.label(text="Blue: B07 +.25 | B14 +.10 | B18 +.03 | B21 +.75 | B23 +.20")
-    color_box.label(text="Other bits have no visible CodeWalker tint, but remain fully editable/exported.")
-
-    row = poly.row(align=True)
+    row = face_box.row(align=True)
     row.operator(CWNAVMESH_OT_apply_flags_to_selected.bl_idname, text="Apply Flags to Selected")
     row.operator(CWNAVMESH_OT_select_matching_flags.bl_idname, text="Select Matching")
-    row = poly.row(align=True)
+    row = face_box.row(align=True)
     row.operator(CWNAVMESH_OT_copy_flags.bl_idname, text="Copy Flags")
     row.operator(CWNAVMESH_OT_paste_flags.bl_idname, text="Paste Flags")
-    poly.prop(settings, "copied_polygon_flags")
-    poly.prop(settings, "polygon_flags", text="Raw flag bytes")
+    face_box.prop(settings, "polygon_flags", text="Raw flag bytes")
     try:
         current_flags = _normalize_flags_text(settings.polygon_flags)
     except ValueError:
         current_flags = [0, 0, 0, 0, 0, 0]
+    face_box.label(text=f"Bitfield: {_polygon_flag_bits(current_flags)}")
 
-    raw_values_box = poly.box()
+    raw_values_box = face_box.box()
     raw_values_box.label(text="CodeWalker Flag Bytes")
     for first_index in range(0, len(POLYGON_FLAG_VALUE_OPTIONS), 2):
         row = raw_values_box.row(align=True)
@@ -5247,33 +5326,22 @@ def _draw_polygon_flags_editor(layout, context, settings, mesh_obj):
             row.prop(settings, attr_name)
     raw_values_box.label(text="UnkX/UnkY are raw bytes; Flags5 stores B16 only.")
 
-    flags_box = poly.box()
-    flags_box.label(text="All 33 Known GTA V Flag Bits (active face)")
-    flags_box.prop(settings, "apply_flag_bit_to_selected", icon="BRUSH_DATA")
-    if settings.apply_flag_bit_to_selected:
-        flags_box.label(text="Checkboxes paint one bit across selected faces; other bits stay intact.")
-    for group_label, group_bits in POLYGON_FLAG_GROUPS:
-        group_box = flags_box.box()
-        group_box.label(text=group_label)
-        for index in range(0, len(group_bits), 2):
-            row = group_box.row(align=True)
-            for attr_name, _label, _bit in group_bits[index:index + 2]:
-                row.prop(settings, attr_name)
-    flags_box.label(text=f"Bitfield: {_polygon_flag_bits(current_flags)}")
 
-    poly.prop(settings, "polygon_edges", text="Edges (advanced)")
+def _draw_edges_and_portals(layout, settings):
+    poly = layout.box()
+    poly.label(text="Edges & Portals", icon="MOD_EDGESPLIT")
+    poly.prop(settings, "polygon_edges", text="Edges")
     edge_flags_box = poly.box()
-    edge_flags_box.label(text="EdgeFlags (active polygon)")
-    edge_flags_box.prop(settings, "edge_flag_index")
+    edge_flags_box.label(text="EdgeFlags (active face)")
+    edge_flags_box.prop(settings, "edge_flag_index", text="Edge")
     row = edge_flags_box.row(align=True)
     row.prop(settings, "edge_poly1_unk2")
     row.prop(settings, "edge_poly1_unk3")
     row = edge_flags_box.row(align=True)
     row.prop(settings, "edge_poly2_unk2")
     row.prop(settings, "edge_poly2_unk3")
-    edge_flags_box.label(text="Values write immediately to this edge row.")
-    poly.prop(settings, "polygon_edges_flags", text="All EdgeFlags (advanced)")
-    poly.prop(settings, "polygon_portals")
+    poly.prop(settings, "polygon_edges_flags", text="All EdgeFlags")
+    poly.prop(settings, "polygon_portals", text="Portal indices")
 
 
 class CWNAVMESH_PT_panel(bpy.types.Panel):
@@ -5293,9 +5361,6 @@ class CWNAVMESH_PT_panel(bpy.types.Panel):
         except Exception:
             pass
 
-        # The flag editor is the primary editing surface.  Keep it before the
-        # import/export controls so a normal-height N-panel never hides the
-        # actual polygon flags and colour preview below setup options.
         if mesh_obj:
             mesh_source = str(mesh_obj.get("ynv_source_xml", mesh_obj.parent.get("ynv_source_xml", "") if mesh_obj.parent else "")).strip()
             mesh_area_id = _get_int_prop(mesh_obj, "ynv_area_id", _get_int_prop(mesh_obj.parent, "ynv_area_id", 0) if mesh_obj.parent else 0)
@@ -5307,110 +5372,83 @@ class CWNAVMESH_PT_panel(bpy.types.Panel):
             _draw_polygon_flags_editor(layout, context, settings, mesh_obj)
             layout.separator()
 
-        layout.prop(settings, "area_id")
-        content_box = layout.box()
-        content_box.label(text="Content Flags")
-        row = content_box.row(align=True)
-        row.prop(settings, "content_polygons")
-        row.prop(settings, "content_portals")
-        row = content_box.row(align=True)
-        row.prop(settings, "content_vehicle")
-        row.prop(settings, "content_unknown_8")
-        content_box.prop(settings, "content_unknown_16")
-        content_box.prop(settings, "content_flags", text="Raw names")
-        layout.prop(settings, "source_xml_path")
-        layout.prop(settings, "source_search_directory")
-        layout.prop(settings, "auto_find_source_xml")
-        layout.prop(settings, "auto_build_edges_on_export")
-        layout.prop(settings, "strict_validation")
-
-        row = layout.row(align=True)
-        row.operator(CWNAVMESH_OT_use_selected.bl_idname, text="Use Selected")
-        row.operator(CWNAVMESH_OT_apply_settings.bl_idname, text="Apply")
-
-        row = layout.row(align=True)
-        row.operator(IMPORT_OT_ynv_xml.bl_idname, text="Import XML")
-        row.operator(CWNAVMESH_OT_create_navmesh.bl_idname, text="New")
-
-        layout.operator(
-            CWNAVMESH_OT_generate_from_selected_mesh.bl_idname,
-            text="Generate Navmesh From Selected Mesh",
-            icon="MOD_TRIANGULATE",
-        )
-
-        row = layout.row(align=True)
-        row.operator(CWNAVMESH_OT_load_source_xml.bl_idname, text="Load Source")
-        row.operator(CWNAVMESH_OT_load_neighbour_cells.bl_idname, text="Load Neighbours")
-
-        row = layout.row(align=True)
-        row.operator(CWNAVMESH_OT_fix_sources.bl_idname, text="Fix Sources")
-
-        row = layout.row(align=True)
-        row.operator(CWNAVMESH_OT_validate.bl_idname, text="Validate")
-
-        row = layout.row(align=True)
-        row.operator(EXPORT_OT_ynv_xml.bl_idname, text="Export XML")
-        row.operator(CWNAVMESH_OT_export_all_ynv_xml.bl_idname, text="Export All")
-
-        layout.prop(settings, "compiler_path")
-        layout.operator(CWNAVMESH_OT_compile_ynv.bl_idname, text="Compile YNV")
-
-        row = layout.row(align=True)
-        row.operator(CWNAVMESH_OT_build_edges.bl_idname, text="Build Edges")
-        row.operator(CWNAVMESH_OT_rebuild_edges_from_geometry.bl_idname, text="Rebuild Edges")
-
-        has_navmesh_root = bool(mesh_obj and _navmesh_root(mesh_obj))
-        row = layout.row(align=True)
-        point_row = row.row(align=True)
-        point_row.enabled = has_navmesh_root
-        point_row.operator(CWNAVMESH_OT_add_point.bl_idname, text="Add Point")
-        portal_row = row.row(align=True)
-        portal_row.enabled = bool(has_navmesh_root and len(mesh_obj.data.polygons) > 0)
-        portal_row.operator(CWNAVMESH_OT_add_portal.bl_idname, text="Add Portal")
-        if has_navmesh_root:
-            layout.label(text="Portal: active face = From; another selected face = To.")
+            quick_box = layout.box()
+            quick_box.label(text="Navmesh", icon="OUTLINER_OB_MESH")
+            row = quick_box.row(align=True)
+            row.prop(settings, "area_id")
+            row.operator(CWNAVMESH_OT_apply_settings.bl_idname, text="Apply Cell")
+            row = quick_box.row(align=True)
+            row.operator(CWNAVMESH_OT_load_source_xml.bl_idname, text="Load Source")
+            row.operator(CWNAVMESH_OT_validate.bl_idname, text="Validate")
+            row = quick_box.row(align=True)
+            row.operator(CWNAVMESH_OT_rebuild_edges_from_geometry.bl_idname, text="Rebuild Edges")
+            row.operator(EXPORT_OT_ynv_xml.bl_idname, text="Export XML", icon="EXPORT")
         else:
-            layout.label(text="Select an imported or newly created navmesh to add points or portals.")
-
-        if mesh_obj:
-            box = layout.box()
-            box.label(text="Selected navmesh status")
-            box.label(text=f"Mesh: {mesh_obj.name}")
-            box.label(text=f"Polygons: {len(mesh_obj.data.polygons)}")
-            box.label(text=f"Active polygon: {_active_polygon_index(mesh_obj)}")
-            flags, edges, edge_flags, polygon_portals = _read_polygon_metadata(mesh_obj)
-            box.label(text=f"Flags / Edges / EdgeFlags / Portals: {len(flags)} / {len(edges)} / {len(edge_flags)} / {len(polygon_portals)}")
-        elif active:
-            layout.label(text=f"Active: {active.name}")
-        else:
-            layout.label(text="No navmesh selected")
-
-        if active and (active.get(YNV_POINT_TAG) or _get_sollum_type(active) == SOLLUMZ_NAVMESH_POINT):
-            box = layout.box()
-            box.label(text="Point")
-            point_props = getattr(active, "sz_nav_point", None)
-            if point_props and hasattr(point_props, "point_type"):
-                box.prop(point_props, "point_type", text="Type")
+            start_box = layout.box()
+            start_box.label(text="Start", icon="PLAY")
+            row = start_box.row(align=True)
+            row.operator(IMPORT_OT_ynv_xml.bl_idname, text="Import XML", icon="IMPORT")
+            row.operator(CWNAVMESH_OT_create_navmesh.bl_idname, text="New")
+            if active and active.type == "MESH":
+                row = start_box.row(align=True)
+                row.operator(CWNAVMESH_OT_generate_from_selected_mesh.bl_idname, text="Generate From Selected", icon="MOD_TRIANGULATE")
+                row.operator(CWNAVMESH_OT_use_selected.bl_idname, text="Use Selected")
             else:
-                box.prop(active, '["ynv_type"]', text="Type")
-            box.prop(active, "rotation_euler", text="Rotation")
-            box.prop(active, "location", text="Position")
+                start_box.label(text="Import a YNV XML or select a mesh to start.")
 
-        if active and (active.get(YNV_PORTAL_TAG) or _get_sollum_type(active) == SOLLUMZ_NAVMESH_PORTAL):
-            box = layout.box()
-            box.label(text="Portal")
-            portal_props = getattr(active, "sz_nav_portal", None)
-            if portal_props and all(hasattr(portal_props, name) for name in ("portal_type", "angle", "poly_from", "poly_to")):
-                box.prop(portal_props, "portal_type", text="Type")
-                box.prop(portal_props, "angle", text="Angle")
-                box.prop(portal_props, "poly_from", text="PolyFrom")
-                box.prop(portal_props, "poly_to", text="PolyTo")
-            else:
-                box.prop(active, '["ynv_type"]', text="Type")
-                box.prop(active, '["ynv_angle"]', text="Angle")
-                box.prop(active, '["ynv_poly_from"]', text="PolyFrom")
-                box.prop(active, '["ynv_poly_to"]', text="PolyTo")
-            box.prop(active, "location", text="Center")
+        if mesh_obj and _draw_foldout_header(layout, settings, "ui_show_all_flag_bits", "All 33 GTA V Flag Bits", icon="PROPERTIES"):
+            _draw_all_polygon_flag_bits(layout, settings)
+        if mesh_obj and _draw_foldout_header(layout, settings, "ui_show_advanced_face_data", "Advanced Face Data", icon="PREFERENCES"):
+            _draw_advanced_face_data(layout, settings)
+        if mesh_obj and _draw_foldout_header(layout, settings, "ui_show_edges_portals", "Edges & Portals", icon="MOD_EDGESPLIT"):
+            _draw_edges_and_portals(layout, settings)
+
+        if mesh_obj and _draw_foldout_header(layout, settings, "ui_show_navmesh_setup", "Navmesh Setup", icon="SETTINGS"):
+            setup_box = layout.box()
+            content_box = setup_box.box()
+            content_box.label(text="Content Flags")
+            row = content_box.row(align=True)
+            row.prop(settings, "content_polygons")
+            row.prop(settings, "content_portals")
+            row = content_box.row(align=True)
+            row.prop(settings, "content_vehicle")
+            row.prop(settings, "content_unknown_8")
+            content_box.prop(settings, "content_unknown_16")
+            content_box.prop(settings, "content_flags", text="Raw names")
+            setup_box.prop(settings, "source_xml_path")
+            setup_box.prop(settings, "source_search_directory")
+            setup_box.prop(settings, "auto_find_source_xml")
+            setup_box.prop(settings, "auto_build_edges_on_export")
+            setup_box.prop(settings, "strict_validation")
+            row = setup_box.row(align=True)
+            if active and active.type == "MESH":
+                row.operator(CWNAVMESH_OT_use_selected.bl_idname, text="Use Selected")
+                row.operator(CWNAVMESH_OT_generate_from_selected_mesh.bl_idname, text="Generate From Selected")
+            row = setup_box.row(align=True)
+            row.operator(IMPORT_OT_ynv_xml.bl_idname, text="Import XML", icon="IMPORT")
+            row.operator(CWNAVMESH_OT_create_navmesh.bl_idname, text="New")
+
+        if mesh_obj and _draw_foldout_header(layout, settings, "ui_show_neighbour_tools", "Neighbour & Batch Tools", icon="MOD_ARRAY"):
+            tools_box = layout.box()
+            row = tools_box.row(align=True)
+            row.operator(CWNAVMESH_OT_load_neighbour_cells.bl_idname, text="Load Neighbours")
+            row.operator(CWNAVMESH_OT_fix_sources.bl_idname, text="Fix Sources")
+            row = tools_box.row(align=True)
+            row.operator(CWNAVMESH_OT_build_edges.bl_idname, text="Build Local Edges")
+            row.operator(CWNAVMESH_OT_export_all_ynv_xml.bl_idname, text="Export All")
+            has_navmesh_root = bool(_navmesh_root(mesh_obj))
+            row = tools_box.row(align=True)
+            point_row = row.row(align=True)
+            point_row.enabled = has_navmesh_root
+            point_row.operator(CWNAVMESH_OT_add_point.bl_idname, text="Add Point")
+            portal_row = row.row(align=True)
+            portal_row.enabled = bool(has_navmesh_root and len(mesh_obj.data.polygons) > 0)
+            portal_row.operator(CWNAVMESH_OT_add_portal.bl_idname, text="Add Portal")
+
+        if mesh_obj and _draw_foldout_header(layout, settings, "ui_show_compiler", "Compile", icon="CONSOLE"):
+            compile_box = layout.box()
+            compile_box.prop(settings, "compiler_path")
+            compile_box.operator(CWNAVMESH_OT_compile_ynv.bl_idname, text="Compile YNV")
 
 
 def _menu_export(self, context):

@@ -2,6 +2,25 @@
 
 All notable changes to GTANAVMESH Edit are documented in this file.
 
+## [0.12.2] - 2026-10-18
+
+### Fixed
+
+- Fixed a Blender 3.5 panel-draw crash on navmeshes whose stable metadata had
+  not yet been initialized. The previous draw path no longer migrates or writes YNV
+  metadata while Blender is drawing its UI; initialization remains an explicit
+  action or deferred operation where Blender permits writes.
+- Added a Blender regression smoke test covering panel drawing in both Object
+  and Edit Mode before metadata exists.
+
+### Changed
+
+- Reworked the sidebar into a compact **Quick Face Edit** and **Navmesh** view.
+  The common surface flags, active-face swatch and color preview stay visible;
+  raw data and infrequent tools move into clearly named, collapsed foldouts.
+- Kept all 33 editable GTA V bits, edge/portal values, setup, neighbour and
+  compiler controls available without forcing them into the first sidebar view.
+
 ## [0.12.1] - 2026-10-18
 
 ### Changed

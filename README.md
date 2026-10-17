@@ -10,13 +10,13 @@ The direct input format is `.ynv.xml`; GTANAVMESH Edit does not decode or
 import native binary `.ynv` files. Binary output remains an optional separate
 compiler step after XML validation.
 
-Version: **v0.12.1**
+Version: **v0.12.2**
 Copyright © 2026 devsanja
 
 > Unofficial community tool. GTANAVMESH Edit is not affiliated with, endorsed
 > by, or associated with Rockstar Games or Take-Two Interactive.
 
-## Highlights in v0.12.1
+## Highlights in v0.12.2
 
 - Direct import and export of `.ynv.xml` from Blender's **File** menu and the
   **GTANAVMESH Edit** sidebar.
@@ -33,20 +33,23 @@ Copyright © 2026 devsanja
   footpath, road, water, train-track, shallow-water and all eight
   slope-direction bits. `Unknown` and `Unused` labels remain deliberately
   editable raw data rather than guessed gameplay semantics.
-- The **Polygon Flags & Colors** editor is the first editing section in the
-  sidebar, ahead of import/export controls. It puts all 33 bits, an active-face
-  color swatch, the exact per-bit CodeWalker color key, **Show Flag Colors**
-  and **Refresh Colors** where they are immediately reachable.
+- The compact sidebar starts with **Quick Face Edit**: `Load Active`, **Show
+  Flag Colors**, an active-face swatch, eight common surface flags and an
+  optional multi-face paint switch. All 33 bits, raw values, edges, portals,
+  setup, neighbour and compiler actions remain available in named foldouts.
 - **CodeWalker flag colors** use CodeWalker's additive packed-flag calculation
   with its 0.75 alpha. **Show Flag Colors** switches the current 3D View to
   Material Preview; **Refresh Colors** reapplies display materials without
   changing any YNV data. **Load Source** and **Use Selected** refresh those
   materials automatically. Not every known bit has a visible color contribution.
-- For fast painting, **Change named bit on selected faces** changes only the
+- The sidebar is safe to open on a new, imported or Sollumz navmesh: panel
+  drawing is read-only, so Blender never receives an illegal metadata write
+  while it is rendering the interface.
+- For fast painting, **Paint named changes to selected faces** changes only the
   clicked bit on every selected face and preserves each face's other bits and
-  raw `UnkX`/`UnkY` bytes. **Apply Flags to Selected** intentionally copies
-  the complete raw flag set; **Select Matching** selects complete raw matches.
-- Choose an edge row to edit its packed `EdgesFlags` parts directly:
+  raw `UnkX`/`UnkY` bytes. Named flags save immediately; raw-field edits are
+  committed with **Apply Raw Face Data** in **Advanced Face Data**.
+- In **Edges & Portals**, choose an edge row to edit its packed `EdgesFlags` parts directly:
   `Poly1 Unk2`, `Poly1 Unk3`, `Poly2 Unk2` and `Poly2 Unk3`.
 - Stable face IDs preserve metadata when Blender reorders faces. Deleted
   source polygons are not silently restored during export.
@@ -75,8 +78,8 @@ Copyright © 2026 devsanja
 
 ## Download and install
 
-1. Open the v0.12.1 release and download
-   **`GTANAVMESH-Edit-v0.12.1.zip`**. Do not unpack it before installation.
+1. Open the v0.12.2 release and download
+   **`GTANAVMESH-Edit-v0.12.2.zip`**. Do not unpack it before installation.
 2. In Blender, open **Edit > Preferences > Add-ons**.
 3. Choose **Install...**, select the downloaded ZIP, then enable
    **GTANAVMESH Edit**.
@@ -130,20 +133,19 @@ Enable it for newly authored geometry and final quality review.
 ### Edit cell flags, polygon flags and edge flags
 
 1. Select the navmesh mesh and use **Use Selected** if necessary.
-2. In the cell section, use the `ContentFlags` toggles for **Polygons**,
+2. Open **Navmesh Setup** and use the `ContentFlags` toggles for **Polygons**,
    **Portals**, **Vehicle**, **Unknown8** and **Unknown16**. Preserve unknown
    source values unless you know the target cell requires a change.
-3. Select a face, choose **Load Active** in the top **Polygon Flags & Colors**
-   editor, then edit the
-   numeric `Flags1`–`Flags4`, `UnkX`, `UnkY` and `Flags5 (B16)` fields or the
-   grouped named bit controls. The controls stay synchronized with the raw
-   `Flags` field. Enable **Change named bit on selected faces** to paint only
-   one named bit across a face selection without replacing other per-face
-   flag data.
-4. For `EdgesFlags`, choose the zero-based **Edge** row, then edit the two
+3. Select a face and choose **Load Active** in **Quick Face Edit**. Use its
+   common surface flags, or open **All 33 GTA V Flag Bits** for every native
+   bit. Enable **Paint named changes to selected faces** to paint only one
+   named bit across a face selection without replacing other per-face data.
+   Use **Advanced Face Data** only when changing the raw/numeric flag values.
+4. In **Edges & Portals**, choose the zero-based **Edge** row, then edit the two
    `Unk2` values (0–3) and two `Unk3` values (0–2047). The row is represented
    as `Poly1 Unk2:Poly1 Unk3, Poly2 Unk2:Poly2 Unk3`.
-5. Use **Apply**, run **Validate**, then export. Keep one `Edges` and one
+5. Use **Apply Raw Face Data** after raw values, run **Validate**, then export.
+   Keep one `Edges` and one
    `EdgesFlags` row for every vertex of the edited polygon.
 
 Named bit labels are editing aids, not a promise of a fully known GTA gameplay
@@ -151,12 +153,12 @@ meaning for every bit. Review unfamiliar or `Unknown` values against the
 original cell and in CodeWalker before changing them.
 
 Use **Show Flag Colors** in a 3D View to switch to Material Preview and see
-the additive CodeWalker-style color result of the packed flags. The editor's
-color key identifies the individual visible bit contributions; all other bits
+the additive CodeWalker-style color result of the packed flags. Quick labels
+and bit-control tooltips identify visible color contributions; all other bits
 remain fully editable despite deliberately having no CodeWalker display tint.
 The preview is diagnostic only: a color does not establish that a particular
-set of flags is appropriate for gameplay. **Refresh Colors** is useful after
-raw bulk edits or after opening an older `.blend`.
+set of flags is appropriate for gameplay. **Refresh Colors**, in **Advanced
+Face Data**, is useful after raw bulk edits or after opening an older `.blend`.
 
 ### Create a new cell
 
@@ -267,7 +269,7 @@ in-game navigation behavior.
 | `ynv_compiler/` | Optional .NET 8 XML-to-RSC7 compiler. |
 | `tools/package_blender_addon.py` | Deterministic release ZIP builder and layout verifier. |
 | `docs/` | Detailed import, source-binding and editing guides. |
-| `RELEASE_NOTES.md` | v0.12.1 release summary and verification scope. |
+| `RELEASE_NOTES.md` | v0.12.2 release summary and verification scope. |
 | `CHANGELOG.md` | Version history. |
 | `THIRD_PARTY_NOTICES.md` | External dependency and affiliation notice. |
 
@@ -280,12 +282,12 @@ Build every Blender release ZIP with the repository packaging script rather
 than a generic archive command:
 
 ```powershell
-py .\tools\package_blender_addon.py --version 0.12.1
+py .\tools\package_blender_addon.py --version 0.12.2
 py .\tools\package_blender_addon.py --check `
-  .\dist\GTANAVMESH-Edit-v0.12.1.zip
+  .\dist\GTANAVMESH-Edit-v0.12.2.zip
 ```
 
-The builder creates `dist/GTANAVMESH-Edit-v0.12.1.zip`, rejects accidental
+The builder creates `dist/GTANAVMESH-Edit-v0.12.2.zip`, rejects accidental
 replacement unless `--force` is supplied, and prints the SHA-256 digest. It
 also writes a real `ynv_blender_addon/` directory entry as the first ZIP
 member. That explicit package-root entry is required by this project's Blender
@@ -299,10 +301,13 @@ confirm that the **GTANAVMESH Edit** sidebar tab is present.
 
 ## Release verification
 
-The v0.12.1 release checklist includes:
+The v0.12.2 release checklist includes:
 
 - Python syntax compilation for the add-on modules.
-- Blender 4.1 background registration and unregistration.
+- Blender 3.5.1 background registration and unregistration.
+- A Blender 3.5 panel-draw regression test in Object and Edit Mode with an
+  uninitialized navmesh, confirming the sidebar does not write ID data while
+  Blender is drawing it.
 - Direct XML import and re-export of a 2,534-polygon sample, preserving
   bounds, `EdgesFlags` and portal links.
 - Deletion of one imported face, confirming that export contains exactly
@@ -320,6 +325,9 @@ The v0.12.1 release checklist includes:
   adjacent-area limits.
 - Release build of `ynv_compiler`, followed by XML-to-RSC7 compilation and
   `--check` verification.
+- A real 2,824-polygon YNV XML edit: Road to Water + ShallowWater, deletion of
+  a second road polygon, edge rebuild, export, native CodeWalker-Core
+  validation, RSC7 compilation and re-read (`AreaID 4039`, 2,823 polygons).
 
 For every release, additionally verify the exact upload ZIP with
 `tools/package_blender_addon.py --check`; it requires an explicit
@@ -333,7 +341,7 @@ mod configuration.
 
 - [Import, source binding and native compilation](docs/YNV_Import_Source_Compile.md)
 - [Navmesh tools user guide](docs/YNV_NavMesh_Tools_Guide.md)
-- [v0.12.1 release notes](RELEASE_NOTES.md)
+- [v0.12.2 release notes](RELEASE_NOTES.md)
 - [Changelog](CHANGELOG.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 

@@ -1,6 +1,6 @@
 # GTANAVMESH Edit - User Guide
 
-Version: **v0.12.1**
+Version: **v0.12.2**
 Copyright © 2026 devsanja
 
 ## 1. Purpose
@@ -121,16 +121,23 @@ community names are fully understood:
 are intentionally conservative. Do not turn them into assumed gameplay
 presets without comparing the source cell in CodeWalker.
 
-The **Polygon Flags & Colors** editor is intentionally the first editing
-section in the sidebar, before long import/export controls. It includes a live
-active-face colour swatch, all 33 named bits and the exact visible CodeWalker
-bit-colour key. **Show Flag Colors** uses the same additive color calculation
-as CodeWalker and switches the current 3D View to Material Preview. Refresh
-Colors reassigns those display materials after raw/bulk edits without
-touching YNV metadata. **Load Source** and **Use Selected** also refresh the
-materials automatically for existing meshes. The preview has alpha 0.75 and
-is diagnostic: some known bits have no color contribution, and a color is not
-proof of intended gameplay behavior.
+The compact **Quick Face Edit** section is the first editing area in the
+sidebar. It includes `Load Active`, **Show Flag Colors**, a live active-face
+colour swatch, eight common surface flags and a multi-face paint switch.
+**All 33 GTA V Flag Bits** holds every named bit, while **Advanced Face Data**
+holds raw values, refresh, copy/paste and matching tools. **Edges & Portals**,
+**Navmesh Setup**, **Neighbour & Batch Tools** and **Compile** are also
+available as closed foldouts so the normal sidebar stays short. **Show Flag Colors**
+uses the same additive color calculation as CodeWalker and switches
+the current 3D View to Material Preview. Refresh Colors reassigns display
+materials after raw/bulk edits without touching YNV metadata. **Load Source**
+and **Use Selected** also refresh the materials automatically for existing
+meshes. The preview has alpha 0.75 and is diagnostic: some known bits have no
+color contribution, and a color is not proof of intended gameplay behavior.
+
+Opening the sidebar is safe even when an imported or Sollumz navmesh has not
+yet received stable GTANAVMESH Edit metadata. The UI draw path is read-only;
+metadata initialization is deferred until Blender allows an explicit write.
 
 The visible per-bit contributions are B00/B01 red +0.01, B02 green +0.25,
 B03 green +0.02, B06 red +0.25, B07 blue +0.25, B14 blue +0.10, B17 green
@@ -162,7 +169,7 @@ If another loaded navmesh has a matching boundary edge at the same world positio
 
 1. In Blender, open `Edit > Preferences > Add-ons`.
 2. Use `Install...`.
-3. Select `GTANAVMESH-Edit-v0.12.1.zip`.
+3. Select `GTANAVMESH-Edit-v0.12.2.zip`.
 4. Enable `GTANAVMESH Edit`.
 5. Open the 3D View sidebar and use the `GTANAVMESH Edit` tab.
 
@@ -176,7 +183,7 @@ The navmesh cell ID written into the exported XML.
 
 Use the original Source XML whenever possible so this value stays correct.
 
-### ContentFlags
+### ContentFlags (Navmesh Setup)
 
 The XML `ContentFlags` value is still shown as text, for example:
 
@@ -199,17 +206,18 @@ from an imported source remain in the text field, so a new control does not
 discard an unfamiliar source flag. Use the raw field only when you need to
 preserve or deliberately author a value outside the named controls.
 
-### Structured Polygon Flags
+### Face flags: Quick Face Edit and foldouts
 
-After selecting a face, use **Load Active** in **Polygon Editor**. The editor
-shows the raw `Flags` line and the matching individual values:
+After selecting a face, use **Load Active** in **Quick Face Edit**. It shows
+the common surface flags. Open **Advanced Face Data** to inspect/edit the raw
+`Flags` line and matching individual values:
 
 - `Flags1`, `Flags2`, `Flags3`, `Flags4`, `UnkX` and `UnkY`: byte values
   (0–255).
 - `Flags5 (B16)`: the single supported B16 value (0 or 1).
 
 Numeric fields, the raw `Flags` line and the bit controls stay synchronized.
-The full set is grouped as `Flags1 — general (B00–B07)`,
+Open **All 33 GTA V Flag Bits** for the full named set. The full set is grouped as `Flags1 — general (B00–B07)`,
 `Flags2 — behaviour (B08–B15)`, `Flags5 — optional B16`,
 `Flags3 — surface category (B17–B24)` and
 `Flags4 — slope direction (B25–B32)`. It includes `Footpath`, `Road`,
@@ -218,14 +226,13 @@ The full set is grouped as `Flags1 — general (B00–B07)`,
 are labelled as `Unknown` or `Unused` where their gameplay meaning is not
 established; they are still editable raw YNV data, not recommended defaults.
 
-Enable **Change named bit on selected faces** before clicking a named flag to
+Enable **Paint named changes to selected faces** before clicking a named flag to
 paint only that flag bit over the current selected faces. Unlike a full flag
 copy, this retains every selected face's other bits, `UnkX` and `UnkY` values.
-When the option is off, a checkbox affects only the active polygon. Use
-**Apply Flags to Selected** only when the complete raw flag set should become
-identical across the selection.
+When the option is off, a checkbox affects only the active polygon. Named flag
+changes save immediately; use **Apply Raw Face Data** after raw edits.
 
-### Structured Edge Flags
+### Structured Edge Flags (Edges & Portals)
 
 Every polygon vertex has one `EdgesFlags` row. Choose the zero-based **Edge**
 index to expose that row as four bounded values:
@@ -435,9 +442,10 @@ deliberate editing; it is never silently assigned to polygon zero. Select the
 portal afterward to edit its Type, Angle, `PolyFrom`, `PolyTo` and center in
 the panel.
 
-## 6. Polygon Editor
+## 6. Face Editing
 
-The polygon editor works on the active face.
+**Quick Face Edit** works on the active face. Advanced controls remain
+available in foldouts without crowding the standard workflow.
 
 ### Load Active
 
@@ -451,21 +459,18 @@ Loads the active face metadata into the editor:
 - named polygon bit controls
 - the selected `EdgesFlags` row and its packed components
 
-### Apply
+### Apply Raw Face Data
 
-Writes the editor values back to the active face.
-
-For a flag-only change, the synchronized numeric, named-bit and selected-edge
-controls write to the current active polygon directly. **Apply** remains the
-safe explicit step after editing raw `Flags`, `Edges`, `EdgesFlags` or portal
-rows.
+Writes the raw `Flags`, `Edges`, `EdgesFlags` and portal-row values from
+**Advanced Face Data** / **Edges & Portals** back to the active face. Named
+flag checkboxes write their changes immediately.
 
 ### Apply Flags to Selected
 
 Copies the complete currently shown raw flag set to selected faces (or to the
 active face when nothing is selected). This intentionally replaces all flag
 bytes on those faces. For a one-bit paint operation that preserves their other
-data, enable **Change named bit on selected faces** and click the desired
+data, enable **Paint named changes to selected faces** and click the desired
 named checkbox instead.
 
 ### Select Matching
@@ -479,8 +484,8 @@ making a targeted change; it does not compare visible color alone.
 **Show Flag Colors** refreshes the active navmesh's display materials and
 switches the current 3D View to Material Preview. **Refresh Colors** only
 refreshes those materials. Both use the packed flag data and do not rewrite
-geometry, edge rows, portals, or source XML metadata. The active-face swatch
-and top-level colour key let you verify the calculated result before using
+geometry, edge rows, portals, or source XML metadata. Quick labels and
+named-control tooltips identify visible color contributions before using
 Material Preview.
 
 ### Copy Flags
@@ -506,18 +511,20 @@ Expected result: bounds, points, flags and edge links should match the original.
 
 1. Select a face.
 2. Click `Load Active`.
-3. Change a named bit, `Flags1`–`Flags4`, `UnkX`, `UnkY` or `Flags5 (B16)`.
-   The five grouped sections together cover B00–B32. Use the raw `Flags`
-   value only for an exact existing value.
+3. Change a common surface bit in **Quick Face Edit**, open **All 33 GTA V Flag Bits**
+   for another named bit, or open **Advanced Face Data** for `Flags1`–`Flags4`,
+   `UnkX`, `UnkY` or `Flags5 (B16)`. The five grouped
+   sections together cover B00–B32. Use the raw `Flags` value only for an
+   exact existing value.
 4. To paint just one named bit over several faces, select those faces, enable
-   **Change named bit on selected faces**, then toggle the checkbox. Their
+   **Paint named changes to selected faces**, then toggle the checkbox. Their
    remaining bit values and raw unknown bytes stay intact. To copy all bytes,
-   use **Apply Flags to Selected** instead.
+   use **Apply Flags to Selected** in **Advanced Face Data** instead.
 5. Use **Show Flag Colors** to inspect the CodeWalker material calculation;
    use **Select Matching** to find equivalent full raw flag sets.
-6. To edit edge metadata, select an **Edge** and change the two `Unk2` and
+6. To edit edge metadata, open **Edges & Portals**, select an **Edge** and change the two `Unk2` and
    two `Unk3` values for that row.
-7. Click polygon `Apply` after any raw field change.
+7. Click **Apply Raw Face Data** after any raw field change.
 8. Use `Validate`.
 9. Export.
 
