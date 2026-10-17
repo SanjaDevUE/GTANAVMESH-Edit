@@ -3,7 +3,7 @@
 bl_info = {
     "name": "GTANAVMESH Edit",
     "author": "devsanja",
-    "version": (0, 12, 0),
+    "version": (0, 12, 1),
     "blender": (2, 80, 0),
     "location": "File > Import/Export; View3D > Sidebar > GTANAVMESH Edit",
     "description": "GTANAVMESH Edit imports, edits and exports GTA V YNV navmesh XML with CodeWalker validation.",
@@ -131,6 +131,33 @@ POLYGON_FLAG_GROUPS = (
     ("Flags3 — surface category (B17–B24)", POLYGON_FLAG_BITS[17:25]),
     ("Flags4 — slope direction (B25–B32)", POLYGON_FLAG_BITS[25:33]),
 )
+
+# CodeWalker does not give every stored bit an individual display colour.
+# These are the exact visible contributions from ``YnvPoly.GetColour``.  Keep
+# the mapping near the editable bit layout so the UI can explain why a valid
+# bit may deliberately leave the material colour unchanged.
+CODEWALKER_FLAG_COLOUR_NOTES = {
+    0: "red +0.01",
+    1: "red +0.01",
+    2: "green +0.25",
+    3: "green +0.02",
+    6: "red +0.25",
+    7: "blue +0.25",
+    14: "blue +0.10",
+    17: "green +0.10",
+    18: "blue +0.03",
+    20: "green +0.75",
+    21: "blue +0.75",
+    22: "red +0.20",
+    23: "blue +0.20",
+    24: "green = 0.20",
+}
+
+
+def _codewalker_flag_colour_note(bit):
+    """Return the documented CodeWalker material contribution for one bit."""
+
+    return CODEWALKER_FLAG_COLOUR_NOTES.get(int(bit), "no visible CodeWalker colour contribution")
 
 
 def _safe_json_loads(value, fallback):
@@ -1281,6 +1308,10 @@ def _apply_source_navmesh_to_mesh(mesh_obj, source_path, navmesh=None):
         source_indices=source_indices,
     )
     _store_reference_face_ids(mesh_obj, face_ids)
+    # Loading source metadata into an existing/Sollumz mesh used to update the
+    # raw flags without updating material slots, making correct flags look
+    # colourless until the user manually pressed Refresh Colors.
+    _refresh_flag_materials(mesh_obj)
 
     # Imported portal objects use the same source polygon positions.  Keep
     # their editable Sollumz properties in the current face-index space too.
@@ -1560,11 +1591,10 @@ def _create_navmesh_mesh_from_data(navmesh):
     face_ids, _source_indices = _current_face_identity(obj)
     _store_reference_face_ids(obj, face_ids)
     _set_sollum_type(obj, SOLLUMZ_NAVMESH_POLY_MESH)
-
-    for polygon in navmesh.polygons:
-        mesh.materials.append(_create_material_for_flags(polygon.flags))
-    for index, face in enumerate(mesh.polygons):
-        face.material_index = index if index < len(mesh.materials) else 0
+    # Assign one material slot per distinct flag combination instead of one
+    # duplicate slot per polygon.  This keeps large imported navmeshes light
+    # while preserving the exact CodeWalker colour for every face.
+    _refresh_flag_materials(obj)
     return obj
 
 
@@ -2637,6 +2667,12 @@ def _set_flag_enabled(flags, bit, enabled):
 
 def _set_polygon_flag_text(settings, flags):
     settings.polygon_flags = " ".join(str(value) for value in flags)
+    # This is a display-only swatch.  Keeping it in sync here covers loading
+    # an active face, raw-byte edits and named-checkbox edits alike.
+    try:
+        settings.active_flag_color = _material_color_for_flags(flags)
+    except (TypeError, ValueError):
+        pass
 
 
 def _apply_current_flags_to_active_polygon(context, settings):
@@ -2834,6 +2870,7 @@ def _apply_polygon_editor_to_mesh(context, mesh_obj):
         raise ValueError("Polygon index is outside the mesh polygon range.")
     vertex_count = len(mesh_obj.data.polygons[index].vertices)
     flags = _normalize_flags_text(settings.polygon_flags)
+    _set_polygon_flag_text(settings, flags)
     edges = _split_rows(settings.polygon_edges)
     edges_flags = _split_rows(settings.polygon_edges_flags)
     if len(edges) != vertex_count:
@@ -3789,6 +3826,19 @@ class CWNavmeshSettings(bpy.types.PropertyGroup):
         description="Raw CodeWalker polygon flag bytes: Flags1, Flags2, Flags3, Flags4, UnkX, UnkY, optional Flags5.",
         default="0 0 0 0 0 0",
     )
+    active_flag_color: bpy.props.FloatVectorProperty(
+        name="Active face CodeWalker colour",
+        description=(
+            "Display swatch for the active face, calculated with CodeWalker's additive flag-colour formula. "
+            "It is preview-only and does not change XML data."
+        ),
+        subtype="COLOR",
+        size=4,
+        min=0.0,
+        max=1.0,
+        default=(0.0, 0.0, 0.0, 0.75),
+        options={"SKIP_SAVE"},
+    )
     apply_flag_bit_to_selected: bpy.props.BoolProperty(
         name="Change named bit on selected faces",
         description=(
@@ -3919,7 +3969,10 @@ def _install_flag_properties(cls):
     for attr_name, label, bit in POLYGON_FLAG_BITS:
         annotations[attr_name] = bpy.props.BoolProperty(
             name=label,
-            description=f"Set polygon flag bit {bit}.",
+            description=(
+                f"Set polygon flag bit B{bit:02d}. CodeWalker material preview: "
+                f"{_codewalker_flag_colour_note(bit)}."
+            ),
             default=False,
             update=_make_flag_checkbox_update(bit, attr_name),
         )
@@ -3939,6 +3992,7 @@ class CWNAVMESH_OT_use_selected(bpy.types.Operator):
         try:
             mesh_obj = _selected_navmesh_object(context)
             _ensure_polygon_metadata(mesh_obj)
+            _refresh_flag_materials(mesh_obj)
             _sync_settings_from_mesh(context, mesh_obj)
         except Exception as exc:
             self.report({"ERROR"}, str(exc))
@@ -5148,6 +5202,80 @@ class CWNAVMESH_OT_export_all_ynv_xml(bpy.types.Operator):
         return {"FINISHED"}
 
 
+def _draw_polygon_flags_editor(layout, context, settings, mesh_obj):
+    """Draw the high-priority per-face editor at the top of the sidebar."""
+
+    active_polygon = _active_polygon_index(mesh_obj)
+    poly = layout.box()
+    poly.label(text="Polygon Flags & Colors", icon="MATERIAL")
+    poly.label(text=f"{mesh_obj.name}  •  active polygon {active_polygon} / {len(mesh_obj.data.polygons)}")
+    poly.prop(settings, "polygon_index")
+
+    row = poly.row(align=True)
+    row.operator(CWNAVMESH_OT_pick_polygon.bl_idname, text="Load Active")
+    row.operator(CWNAVMESH_OT_apply_polygon.bl_idname, text="Apply")
+    row = poly.row(align=True)
+    row.operator(CWNAVMESH_OT_show_flag_colors.bl_idname, text="Show Flag Colors", icon="MATERIAL")
+    row.operator(CWNAVMESH_OT_refresh_flag_colors.bl_idname, text="Refresh Colors", icon="FILE_REFRESH")
+
+    color_box = poly.box()
+    color_box.label(text="Exact CodeWalker Material Preview")
+    color_box.prop(settings, "active_flag_color", text="Active face colour")
+    color_box.label(text="Red: B00/B01 +.01 | B06 +.25 | B22 +.20")
+    color_box.label(text="Green: B02 +.25 | B03 +.02 | B17 +.10 | B20 +.75 | B24 = .20")
+    color_box.label(text="Blue: B07 +.25 | B14 +.10 | B18 +.03 | B21 +.75 | B23 +.20")
+    color_box.label(text="Other bits have no visible CodeWalker tint, but remain fully editable/exported.")
+
+    row = poly.row(align=True)
+    row.operator(CWNAVMESH_OT_apply_flags_to_selected.bl_idname, text="Apply Flags to Selected")
+    row.operator(CWNAVMESH_OT_select_matching_flags.bl_idname, text="Select Matching")
+    row = poly.row(align=True)
+    row.operator(CWNAVMESH_OT_copy_flags.bl_idname, text="Copy Flags")
+    row.operator(CWNAVMESH_OT_paste_flags.bl_idname, text="Paste Flags")
+    poly.prop(settings, "copied_polygon_flags")
+    poly.prop(settings, "polygon_flags", text="Raw flag bytes")
+    try:
+        current_flags = _normalize_flags_text(settings.polygon_flags)
+    except ValueError:
+        current_flags = [0, 0, 0, 0, 0, 0]
+
+    raw_values_box = poly.box()
+    raw_values_box.label(text="CodeWalker Flag Bytes")
+    for first_index in range(0, len(POLYGON_FLAG_VALUE_OPTIONS), 2):
+        row = raw_values_box.row(align=True)
+        for attr_name, _label, _byte_index, _maximum in POLYGON_FLAG_VALUE_OPTIONS[first_index:first_index + 2]:
+            row.prop(settings, attr_name)
+    raw_values_box.label(text="UnkX/UnkY are raw bytes; Flags5 stores B16 only.")
+
+    flags_box = poly.box()
+    flags_box.label(text="All 33 Known GTA V Flag Bits (active face)")
+    flags_box.prop(settings, "apply_flag_bit_to_selected", icon="BRUSH_DATA")
+    if settings.apply_flag_bit_to_selected:
+        flags_box.label(text="Checkboxes paint one bit across selected faces; other bits stay intact.")
+    for group_label, group_bits in POLYGON_FLAG_GROUPS:
+        group_box = flags_box.box()
+        group_box.label(text=group_label)
+        for index in range(0, len(group_bits), 2):
+            row = group_box.row(align=True)
+            for attr_name, _label, _bit in group_bits[index:index + 2]:
+                row.prop(settings, attr_name)
+    flags_box.label(text=f"Bitfield: {_polygon_flag_bits(current_flags)}")
+
+    poly.prop(settings, "polygon_edges", text="Edges (advanced)")
+    edge_flags_box = poly.box()
+    edge_flags_box.label(text="EdgeFlags (active polygon)")
+    edge_flags_box.prop(settings, "edge_flag_index")
+    row = edge_flags_box.row(align=True)
+    row.prop(settings, "edge_poly1_unk2")
+    row.prop(settings, "edge_poly1_unk3")
+    row = edge_flags_box.row(align=True)
+    row.prop(settings, "edge_poly2_unk2")
+    row.prop(settings, "edge_poly2_unk3")
+    edge_flags_box.label(text="Values write immediately to this edge row.")
+    poly.prop(settings, "polygon_edges_flags", text="All EdgeFlags (advanced)")
+    poly.prop(settings, "polygon_portals")
+
+
 class CWNAVMESH_PT_panel(bpy.types.Panel):
     bl_label = "GTANAVMESH Edit"
     bl_idname = "CWNAVMESH_PT_panel"
@@ -5164,6 +5292,20 @@ class CWNAVMESH_PT_panel(bpy.types.Panel):
             mesh_obj = _selected_navmesh_for_marker(context)
         except Exception:
             pass
+
+        # The flag editor is the primary editing surface.  Keep it before the
+        # import/export controls so a normal-height N-panel never hides the
+        # actual polygon flags and colour preview below setup options.
+        if mesh_obj:
+            mesh_source = str(mesh_obj.get("ynv_source_xml", mesh_obj.parent.get("ynv_source_xml", "") if mesh_obj.parent else "")).strip()
+            mesh_area_id = _get_int_prop(mesh_obj, "ynv_area_id", _get_int_prop(mesh_obj.parent, "ynv_area_id", 0) if mesh_obj.parent else 0)
+            if settings.source_xml_path != mesh_source or int(settings.area_id) != int(mesh_area_id):
+                _schedule_settings_sync(context.scene, mesh_obj)
+            active_polygon = _active_polygon_index(mesh_obj)
+            if active_polygon != settings.polygon_index:
+                _schedule_polygon_editor_load(context.scene, mesh_obj, active_polygon)
+            _draw_polygon_flags_editor(layout, context, settings, mesh_obj)
+            layout.separator()
 
         layout.prop(settings, "area_id")
         content_box = layout.box()
@@ -5231,82 +5373,13 @@ class CWNAVMESH_PT_panel(bpy.types.Panel):
             layout.label(text="Select an imported or newly created navmesh to add points or portals.")
 
         if mesh_obj:
-            mesh_source = str(mesh_obj.get("ynv_source_xml", mesh_obj.parent.get("ynv_source_xml", "") if mesh_obj.parent else "")).strip()
-            mesh_area_id = _get_int_prop(mesh_obj, "ynv_area_id", _get_int_prop(mesh_obj.parent, "ynv_area_id", 0) if mesh_obj.parent else 0)
-            if settings.source_xml_path != mesh_source or int(settings.area_id) != int(mesh_area_id):
-                _schedule_settings_sync(context.scene, mesh_obj)
-            active_polygon = _active_polygon_index(mesh_obj)
-            if active_polygon != settings.polygon_index:
-                _schedule_polygon_editor_load(context.scene, mesh_obj, active_polygon)
             box = layout.box()
-            box.label(text="Selected")
+            box.label(text="Selected navmesh status")
             box.label(text=f"Mesh: {mesh_obj.name}")
             box.label(text=f"Polygons: {len(mesh_obj.data.polygons)}")
-            box.label(text=f"Active polygon: {active_polygon}")
+            box.label(text=f"Active polygon: {_active_polygon_index(mesh_obj)}")
             flags, edges, edge_flags, polygon_portals = _read_polygon_metadata(mesh_obj)
-            box.label(text=f"Flags rows: {len(flags)}")
-            box.label(text=f"Edges rows: {len(edges)}")
-            box.label(text=f"EdgesFlags rows: {len(edge_flags)}")
-            box.label(text=f"Portal rows: {len(polygon_portals)}")
-
-            poly = layout.box()
-            poly.label(text="Polygon Editor")
-            poly.prop(settings, "polygon_index")
-            row = poly.row(align=True)
-            row.operator(CWNAVMESH_OT_pick_polygon.bl_idname, text="Load Active")
-            row.operator(CWNAVMESH_OT_apply_polygon.bl_idname, text="Apply")
-            row = poly.row(align=True)
-            row.operator(CWNAVMESH_OT_apply_flags_to_selected.bl_idname, text="Apply Flags to Selected")
-            row.operator(CWNAVMESH_OT_select_matching_flags.bl_idname, text="Select Matching")
-            row = poly.row(align=True)
-            row.operator(CWNAVMESH_OT_show_flag_colors.bl_idname, text="Show Flag Colors", icon="MATERIAL")
-            row.operator(CWNAVMESH_OT_refresh_flag_colors.bl_idname, text="Refresh Colors", icon="FILE_REFRESH")
-            color_box = poly.box()
-            color_box.label(text="CodeWalker Flag Colors (Material Preview)")
-            color_box.label(text="Green: footpath / flat / track   Blue: water / interior / shallow")
-            color_box.label(text="Red: avoid / steep / footpath variants   Alpha: 0.75")
-            row = poly.row(align=True)
-            row.operator(CWNAVMESH_OT_copy_flags.bl_idname, text="Copy Flags")
-            row.operator(CWNAVMESH_OT_paste_flags.bl_idname, text="Paste Flags")
-            poly.prop(settings, "copied_polygon_flags")
-            poly.prop(settings, "polygon_flags", text="Raw flag bytes")
-            try:
-                current_flags = _normalize_flags_text(settings.polygon_flags)
-            except ValueError:
-                current_flags = [0, 0, 0, 0, 0, 0]
-            raw_values_box = poly.box()
-            raw_values_box.label(text="CodeWalker Flag Bytes")
-            for first_index in range(0, len(POLYGON_FLAG_VALUE_OPTIONS), 2):
-                row = raw_values_box.row(align=True)
-                for attr_name, _label, _byte_index, _maximum in POLYGON_FLAG_VALUE_OPTIONS[first_index:first_index + 2]:
-                    row.prop(settings, attr_name)
-            raw_values_box.label(text="UnkX/UnkY are raw bytes; Flags5 stores B16 only.")
-            flags_box = poly.box()
-            flags_box.label(text="All 33 Known GTA V Flag Bits (active face)")
-            flags_box.prop(settings, "apply_flag_bit_to_selected", icon="BRUSH_DATA")
-            if settings.apply_flag_bit_to_selected:
-                flags_box.label(text="Checkboxes paint one bit across selected faces; other bits stay intact.")
-            for group_label, group_bits in POLYGON_FLAG_GROUPS:
-                group_box = flags_box.box()
-                group_box.label(text=group_label)
-                for index in range(0, len(group_bits), 2):
-                    row = group_box.row(align=True)
-                    for attr_name, _label, _bit in group_bits[index:index + 2]:
-                        row.prop(settings, attr_name)
-            flags_box.label(text=f"Bitfield: {_polygon_flag_bits(current_flags)}")
-            poly.prop(settings, "polygon_edges", text="Edges (advanced)")
-            edge_flags_box = poly.box()
-            edge_flags_box.label(text="EdgeFlags (active polygon)")
-            edge_flags_box.prop(settings, "edge_flag_index")
-            row = edge_flags_box.row(align=True)
-            row.prop(settings, "edge_poly1_unk2")
-            row.prop(settings, "edge_poly1_unk3")
-            row = edge_flags_box.row(align=True)
-            row.prop(settings, "edge_poly2_unk2")
-            row.prop(settings, "edge_poly2_unk3")
-            edge_flags_box.label(text="Values write immediately to this edge row.")
-            poly.prop(settings, "polygon_edges_flags", text="All EdgeFlags (advanced)")
-            poly.prop(settings, "polygon_portals")
+            box.label(text=f"Flags / Edges / EdgeFlags / Portals: {len(flags)} / {len(edges)} / {len(edge_flags)} / {len(polygon_portals)}")
         elif active:
             layout.label(text=f"Active: {active.name}")
         else:

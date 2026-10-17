@@ -1,6 +1,6 @@
 # GTANAVMESH Edit - User Guide
 
-Version: **v0.12.0**
+Version: **v0.12.1**
 Copyright © 2026 devsanja
 
 ## 1. Purpose
@@ -121,11 +121,22 @@ community names are fully understood:
 are intentionally conservative. Do not turn them into assumed gameplay
 presets without comparing the source cell in CodeWalker.
 
-**Show Flag Colors** uses the same additive color calculation as CodeWalker
-and switches the current 3D View to Material Preview. **Refresh Colors**
-reassigns those display materials after raw/bulk edits without touching YNV
-metadata. The preview has alpha 0.75 and is diagnostic: some known bits have
-no color contribution, and a color is not proof of intended gameplay behavior.
+The **Polygon Flags & Colors** editor is intentionally the first editing
+section in the sidebar, before long import/export controls. It includes a live
+active-face colour swatch, all 33 named bits and the exact visible CodeWalker
+bit-colour key. **Show Flag Colors** uses the same additive color calculation
+as CodeWalker and switches the current 3D View to Material Preview. Refresh
+Colors reassigns those display materials after raw/bulk edits without
+touching YNV metadata. **Load Source** and **Use Selected** also refresh the
+materials automatically for existing meshes. The preview has alpha 0.75 and
+is diagnostic: some known bits have no color contribution, and a color is not
+proof of intended gameplay behavior.
+
+The visible per-bit contributions are B00/B01 red +0.01, B02 green +0.25,
+B03 green +0.02, B06 red +0.25, B07 blue +0.25, B14 blue +0.10, B17 green
++0.10, B18 blue +0.03, B20 green +0.75, B21 blue +0.75, B22 red +0.20,
+B23 blue +0.20 and B24 green =0.20. Every other known bit is still editable
+and exported, but deliberately has no visible CodeWalker material tint.
 
 ### Edge Links
 
@@ -151,7 +162,7 @@ If another loaded navmesh has a matching boundary edge at the same world positio
 
 1. In Blender, open `Edit > Preferences > Add-ons`.
 2. Use `Install...`.
-3. Select `GTANAVMESH-Edit-v0.12.0.zip`.
+3. Select `GTANAVMESH-Edit-v0.12.1.zip`.
 4. Enable `GTANAVMESH Edit`.
 5. Open the 3D View sidebar and use the `GTANAVMESH Edit` tab.
 
@@ -468,7 +479,9 @@ making a targeted change; it does not compare visible color alone.
 **Show Flag Colors** refreshes the active navmesh's display materials and
 switches the current 3D View to Material Preview. **Refresh Colors** only
 refreshes those materials. Both use the packed flag data and do not rewrite
-geometry, edge rows, portals, or source XML metadata.
+geometry, edge rows, portals, or source XML metadata. The active-face swatch
+and top-level colour key let you verify the calculated result before using
+Material Preview.
 
 ### Copy Flags
 

@@ -10,13 +10,13 @@ The direct input format is `.ynv.xml`; GTANAVMESH Edit does not decode or
 import native binary `.ynv` files. Binary output remains an optional separate
 compiler step after XML validation.
 
-Version: **v0.12.0**
+Version: **v0.12.1**
 Copyright © 2026 devsanja
 
 > Unofficial community tool. GTANAVMESH Edit is not affiliated with, endorsed
 > by, or associated with Rockstar Games or Take-Two Interactive.
 
-## Highlights in v0.12.0
+## Highlights in v0.12.1
 
 - Direct import and export of `.ynv.xml` from Blender's **File** menu and the
   **GTANAVMESH Edit** sidebar.
@@ -33,10 +33,15 @@ Copyright © 2026 devsanja
   footpath, road, water, train-track, shallow-water and all eight
   slope-direction bits. `Unknown` and `Unused` labels remain deliberately
   editable raw data rather than guessed gameplay semantics.
+- The **Polygon Flags & Colors** editor is the first editing section in the
+  sidebar, ahead of import/export controls. It puts all 33 bits, an active-face
+  color swatch, the exact per-bit CodeWalker color key, **Show Flag Colors**
+  and **Refresh Colors** where they are immediately reachable.
 - **CodeWalker flag colors** use CodeWalker's additive packed-flag calculation
   with its 0.75 alpha. **Show Flag Colors** switches the current 3D View to
   Material Preview; **Refresh Colors** reapplies display materials without
-  changing any YNV data. Not every known bit has a visible color contribution.
+  changing any YNV data. **Load Source** and **Use Selected** refresh those
+  materials automatically. Not every known bit has a visible color contribution.
 - For fast painting, **Change named bit on selected faces** changes only the
   clicked bit on every selected face and preserves each face's other bits and
   raw `UnkX`/`UnkY` bytes. **Apply Flags to Selected** intentionally copies
@@ -70,8 +75,8 @@ Copyright © 2026 devsanja
 
 ## Download and install
 
-1. Open the v0.12.0 release and download
-   **`GTANAVMESH-Edit-v0.12.0.zip`**. Do not unpack it before installation.
+1. Open the v0.12.1 release and download
+   **`GTANAVMESH-Edit-v0.12.1.zip`**. Do not unpack it before installation.
 2. In Blender, open **Edit > Preferences > Add-ons**.
 3. Choose **Install...**, select the downloaded ZIP, then enable
    **GTANAVMESH Edit**.
@@ -128,7 +133,8 @@ Enable it for newly authored geometry and final quality review.
 2. In the cell section, use the `ContentFlags` toggles for **Polygons**,
    **Portals**, **Vehicle**, **Unknown8** and **Unknown16**. Preserve unknown
    source values unless you know the target cell requires a change.
-3. Select a face, choose **Load Active** in **Polygon Editor**, then edit the
+3. Select a face, choose **Load Active** in the top **Polygon Flags & Colors**
+   editor, then edit the
    numeric `Flags1`–`Flags4`, `UnkX`, `UnkY` and `Flags5 (B16)` fields or the
    grouped named bit controls. The controls stay synchronized with the raw
    `Flags` field. Enable **Change named bit on selected faces** to paint only
@@ -145,10 +151,12 @@ meaning for every bit. Review unfamiliar or `Unknown` values against the
 original cell and in CodeWalker before changing them.
 
 Use **Show Flag Colors** in a 3D View to switch to Material Preview and see
-the additive CodeWalker-style color result of the packed flags. The preview is
-diagnostic only: a color does not establish that a particular set of flags is
-appropriate for gameplay. **Refresh Colors** is useful after raw bulk edits or
-after opening an older `.blend`.
+the additive CodeWalker-style color result of the packed flags. The editor's
+color key identifies the individual visible bit contributions; all other bits
+remain fully editable despite deliberately having no CodeWalker display tint.
+The preview is diagnostic only: a color does not establish that a particular
+set of flags is appropriate for gameplay. **Refresh Colors** is useful after
+raw bulk edits or after opening an older `.blend`.
 
 ### Create a new cell
 
@@ -259,7 +267,7 @@ in-game navigation behavior.
 | `ynv_compiler/` | Optional .NET 8 XML-to-RSC7 compiler. |
 | `tools/package_blender_addon.py` | Deterministic release ZIP builder and layout verifier. |
 | `docs/` | Detailed import, source-binding and editing guides. |
-| `RELEASE_NOTES.md` | v0.12.0 release summary and verification scope. |
+| `RELEASE_NOTES.md` | v0.12.1 release summary and verification scope. |
 | `CHANGELOG.md` | Version history. |
 | `THIRD_PARTY_NOTICES.md` | External dependency and affiliation notice. |
 
@@ -272,12 +280,12 @@ Build every Blender release ZIP with the repository packaging script rather
 than a generic archive command:
 
 ```powershell
-py .\tools\package_blender_addon.py --version 0.12.0
+py .\tools\package_blender_addon.py --version 0.12.1
 py .\tools\package_blender_addon.py --check `
-  .\dist\GTANAVMESH-Edit-v0.12.0.zip
+  .\dist\GTANAVMESH-Edit-v0.12.1.zip
 ```
 
-The builder creates `dist/GTANAVMESH-Edit-v0.12.0.zip`, rejects accidental
+The builder creates `dist/GTANAVMESH-Edit-v0.12.1.zip`, rejects accidental
 replacement unless `--force` is supplied, and prints the SHA-256 digest. It
 also writes a real `ynv_blender_addon/` directory entry as the first ZIP
 member. That explicit package-root entry is required by this project's Blender
@@ -291,7 +299,7 @@ confirm that the **GTANAVMESH Edit** sidebar tab is present.
 
 ## Release verification
 
-The v0.12.0 release checklist includes:
+The v0.12.1 release checklist includes:
 
 - Python syntax compilation for the add-on modules.
 - Blender 4.1 background registration and unregistration.
@@ -325,7 +333,7 @@ mod configuration.
 
 - [Import, source binding and native compilation](docs/YNV_Import_Source_Compile.md)
 - [Navmesh tools user guide](docs/YNV_NavMesh_Tools_Guide.md)
-- [v0.12.0 release notes](RELEASE_NOTES.md)
+- [v0.12.1 release notes](RELEASE_NOTES.md)
 - [Changelog](CHANGELOG.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 

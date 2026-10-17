@@ -2,6 +2,25 @@
 
 All notable changes to GTANAVMESH Edit are documented in this file.
 
+## [0.12.1] - 2026-10-18
+
+### Changed
+
+- Moved the full **Polygon Flags & Colors** editor to the top of the sidebar.
+  `Show Flag Colors`, `Refresh Colors`, the active-face colour swatch and all
+  33 editable bits are now reachable before the long import/export controls.
+- Added an exact per-bit CodeWalker colour key and hover descriptions. It
+  documents the 14 visible packed-flag contributions and explicitly identifies
+  valid bits that intentionally have no display-colour effect.
+
+### Fixed
+
+- **Load Source** and **Use Selected** now assign/refresh CodeWalker flag
+  materials automatically, so existing/Sollumz meshes receive their proper
+  display colours without a manual refresh.
+- Direct XML import now reuses material slots for matching flag combinations
+  instead of adding one duplicate material slot per polygon.
+
 ## [0.12.0] - 2026-10-18
 
 ### Added

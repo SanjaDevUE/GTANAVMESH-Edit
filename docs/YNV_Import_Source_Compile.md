@@ -5,7 +5,7 @@ navmeshes with GTANAVMESH Edit. The Blender addon writes CodeWalker-compatible
 `.ynv.xml`; native `.ynv` compilation is deliberately a separate, opt-in
 step.
 
-Version: **v0.12.0**
+Version: **v0.12.1**
 Copyright © 2026 devsanja
 
 > Unofficial community tool. GTANAVMESH Edit is not affiliated with, endorsed
@@ -64,8 +64,9 @@ portal, point and edge link as data that needs review.
 ## Edit navmesh metadata from the sidebar
 
 The **GTANAVMESH Edit** tab presents the GTA navmesh values in both structured
-and raw forms. Select the navmesh mesh before changing cell-level metadata;
-select a face and use **Load Active** before changing polygon-level metadata.
+and raw forms. The top **Polygon Flags & Colors** editor appears before the
+long cell/import/export controls, so select a face and use **Load Active**
+before changing polygon-level metadata.
 
 - **ContentFlags:** use the `Polygons`, `Portals`, `Vehicle`, `Unknown8` and
   `Unknown16` toggles for the known values. The raw comma-separated
@@ -83,10 +84,13 @@ select a face and use **Load Active** before changing polygon-level metadata.
   clicking a checkbox to change only that bit across selected faces. The tool
   preserves each face's other bits and `UnkX`/`UnkY`; use **Apply Flags to
   Selected** only when copying the complete raw flag set is intended.
-- **Flag colors:** **Show Flag Colors** switches the current 3D View to
-  Material Preview and **Refresh Colors** reapplies display materials. The
-  additive colors and 0.75 alpha follow CodeWalker's calculation; they are a
-  diagnostic display rather than a semantic flag validator.
+- **Flag colors:** the top editor shows a live active-face colour swatch and
+  the exact per-bit CodeWalker colour key. **Show Flag Colors** switches the
+  current 3D View to Material Preview and **Refresh Colors** reapplies display
+  materials. **Load Source** and **Use Selected** refresh those materials
+  automatically. The additive colors and 0.75 alpha follow CodeWalker's
+  calculation; they are a diagnostic display rather than a semantic flag
+  validator.
 - **EdgesFlags:** select the zero-based edge row, then edit `Poly1 Unk2`,
   `Poly1 Unk3`, `Poly2 Unk2` and `Poly2 Unk3`. `Unk2` is 0–3 and `Unk3` is
   0–2047. One `EdgesFlags` row is required per polygon vertex.
